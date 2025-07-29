@@ -42,6 +42,21 @@ async function mainAsync(){
 
   camera.position.z = 5;
 
+  window.addEventListener("resize",()=>{
+    onResize();
+  })
+  onResize();
+
+  function onResize(){
+    if(!backgroundElement){
+      throw new Error("backgroundElement is null");
+    }
+    const {width,height}=getElementSize(backgroundElement);
+    renderer.setSize(width,height);
+    camera.aspect=width/height;
+    camera.updateProjectionMatrix();
+  }
+
   function animate(){
     cube.rotation.x += 0.01;
     cube.rotation.y += 0.01;
