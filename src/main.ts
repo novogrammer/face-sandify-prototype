@@ -15,6 +15,17 @@ async function mainAsync(){
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera( 75, width / height, 0.1, 1000 );
 
+  {
+    const ambientLight=new THREE.AmbientLight(0xffffff,0.6);
+    scene.add(ambientLight);
+  }
+  {
+    const directionalLight=new THREE.DirectionalLight(0xffffff,2);
+    directionalLight.position.set(10,10,10);
+    scene.add(directionalLight);
+  }
+
+
   const renderer = new THREE.WebGPURenderer({
     // forceWebGL:true,
   });
@@ -25,7 +36,7 @@ async function mainAsync(){
 
 
   const geometry = new THREE.BoxGeometry( 1, 1, 1 );
-  const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+  const material = new THREE.MeshStandardMaterial( { color: 0x00ff00 } );
   const cube = new THREE.Mesh( geometry, material );
   scene.add( cube );
 
