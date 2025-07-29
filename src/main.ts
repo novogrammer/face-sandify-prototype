@@ -1,5 +1,5 @@
 import { getElementSize } from './dom_utils';
-import { MyTexture } from './myTexture';
+import { MyTexture } from './MyTexture';
 import './style.scss'
 
 import * as THREE from 'three/webgpu';

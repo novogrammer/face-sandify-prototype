@@ -1,4 +1,4 @@
-import { Fn, instanceIndex, texture, textureLoad, textureStore, uvec2, vec3, vec4 } from 'three/tsl';
+import { Fn, fract, If, instanceIndex, texture, textureLoad, textureStore, time, uvec2, vec2, vec3, vec4 } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 
 
@@ -14,24 +14,47 @@ export class MyTexture{
     this.width=width;
     this.height=height;
 
-      
-    this.inputTexture=new THREE.StorageTexture(width, height);
-    this.outputTexture=new THREE.StorageTexture(width, height);
+    const makeTexture=()=>{
+      const texture=new THREE.StorageTexture(width, height);
+      texture.type=THREE.HalfFloatType;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      return texture;
+    }
+    this.inputTexture=makeTexture();
+    this.outputTexture=makeTexture();
     // this.inputTexture.type=THREE.HalfFloatType;
     // this.outputTexture.type=THREE.HalfFloatType;
+
+    
     
     // コンピュートシェーダーの定義  
     this.computeShader = Fn(([inputTexture, outputTexture]:[THREE.StorageTexture,THREE.StorageTexture]) => {  
         const coord = uvec2(instanceIndex.mod(width), instanceIndex.div(width));  
-          
+        
         // 前フレームのデータを読み込み  
         const prevColor = textureLoad(inputTexture, coord);  
-          
-        // RGB反転処理  
-        const newColor = vec4(  
-            vec3(1.0).sub(prevColor.rgb), // RGB各チャンネルを1.0から引く  
-            prevColor.a                   // アルファは保持  
-        );  
+        const prevColorUp = textureLoad(inputTexture, coord.add(uvec2(0,1)).mod((uvec2(width,height))));  
+        
+        const newColor=vec4(0.0).toVar();
+        
+        // UV座標を手動で計算  
+        const uv = vec2(coord).div(vec2(width, height));
+
+        const eachProgress = fract(time);
+        If(eachProgress.lessThanEqual(0.1).and(uv.sub(0.5).length().lessThan(0.5)),()=>{
+          // 初期化処理
+          newColor.assign(vec4(  
+              vec3(1.0),  
+              prevColor.a 
+          ));
+        }).Else(()=>{
+          newColor.assign(vec4(
+            prevColorUp.rgb.mul(0.99),
+            prevColor.a
+          ));
+        });
+
         // 結果を書き込み  
         textureStore(outputTexture, coord, newColor);  
     });  
@@ -45,15 +68,18 @@ export class MyTexture{
   }
 
   getOutputTextureNode(){
+
     return texture(this.outputTexture);
   }
 
   async updateFrameAsync(renderer:THREE.WebGPURenderer) {  
     this.toggleTexture();
+    
     // コンピュートシェーダーを実行  
     const computeNode = this.computeShader(this.inputTexture,this.outputTexture).compute(this.width*this.height);
-      
     await renderer.computeAsync(computeNode);  
+
+      
 
   }
 }
