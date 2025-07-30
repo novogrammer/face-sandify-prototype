@@ -3,6 +3,7 @@ import { MyTexture } from './MyTexture';
 import './style.scss'
 
 import * as THREE from 'three/webgpu';
+import { testStructAsync } from './test_struct';
 
 
 async function mainAsync(){
@@ -60,6 +61,10 @@ async function mainAsync(){
     camera.aspect=width/height;
     camera.updateProjectionMatrix();
   }
+
+  testStructAsync(renderer).catch((error)=>{
+    console.error(error);
+  })
 
   let isComputing=false;
   async function animate(){
