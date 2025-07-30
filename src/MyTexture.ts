@@ -1,6 +1,12 @@
 import { float, Fn, fract, If, instanceIndex, int, struct, texture, textureLoad, textureStore, time, uvec2, vec2, vec3, vec4 } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 
+const SHOW_WGSL_CODE=false;
+
+const KIND_AIR=0;
+const KIND_SAND=1;
+// const KIND_WALL=2;
+
 
 export class MyTexture{
   width:number;
@@ -22,6 +28,7 @@ export class MyTexture{
       return texture;
     }
     this.inputTexture=makeTexture();
+    // console.log(`flipY: ${this.inputTexture.flipY}`);
     this.outputTexture=makeTexture();
 
     // Cell構造体の定義
@@ -31,25 +38,24 @@ export class MyTexture{
     });
     // unpackCell関数  
     const unpackCell = Fn(([colorVec]:[ReturnType<typeof vec4>]) => {  
-      const cell = Cell().toVar();
-      // @ts-ignore
-      cell.get("kind").assign(int(colorVec.r.mul(255.0)));
-      // @ts-ignore
-      cell.get("color").assign(colorVec.g);
+      const cell = Cell({
+        // @ts-ignore
+        kind:int(colorVec.r.mul(255.0)),
+        color:colorVec.g,
+      });
       return cell;  
     });  
     
     // packCell関数
     const packCell = Fn(([cell]:[typeof Cell]) => {
-      const color = vec4().toVar();
-      color.assign(vec4(
+      const color = vec4(
         // @ts-ignore
         float(cell.get('kind')).div(255.0),
         // @ts-ignore
         cell.get('color'),
         1.0,
         1.0
-      ));
+      );
       return color;
     });
 
@@ -71,16 +77,20 @@ export class MyTexture{
       const eachProgress = fract(time.div(5));
       If(eachProgress.lessThanEqual(0.1),()=>{
         // 初期化処理
-        If(uv.sub(0.5).length().lessThanEqual(0.5),()=>{
-          cellColorNext.assign(vec4(  
-              vec3(1.0),  
-              1.0
-          ));
+        If(uv.sub(0).length().lessThanEqual(0.5),()=>{
+          // @ts-ignore
+          cellColorNext.assign(packCell(Cell({
+            // @ts-ignore
+            kind:int(KIND_SAND),
+            color:float(0),
+          })));
         }).Else(()=>{
-          cellColorNext.assign(vec4(  
-              vec3(0.0),  
-              1.0
-          ));
+          // @ts-ignore
+          cellColorNext.assign(packCell(Cell({
+            // @ts-ignore
+            kind:int(KIND_AIR),
+            color:float(1),
+          })));
         });
       }).Else(()=>{
         // @ts-ignore
@@ -112,8 +122,10 @@ export class MyTexture{
     const computeNode = this.computeShader(this.inputTexture,this.outputTexture).compute(this.width*this.height);
     await renderer.computeAsync(computeNode);  
 
-    // console.log((renderer as any)._nodes.getForCompute(computeNode));
-    // debugger;
+    if(SHOW_WGSL_CODE){
+      console.log((renderer as any)._nodes.getForCompute(computeNode).computeShader);
+      debugger;
+    }
 
       
 
