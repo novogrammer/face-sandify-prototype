@@ -26,14 +26,14 @@ export class MyTexture{
 
     // Cell構造体の定義
     const Cell = struct({
-        typo: 'int',
+        kind: 'int',
         color: 'float'
     });
     // unpackCell関数  
     const unpackCell = Fn(([colorVec]:[ReturnType<typeof vec4>]) => {  
       const cell = Cell().toVar();
       // @ts-ignore
-      cell.get("typo").assign(int(colorVec.r.mul(255.0)));
+      cell.get("kind").assign(int(colorVec.r.mul(255.0)));
       // @ts-ignore
       cell.get("color").assign(colorVec.g);
       return cell;  
@@ -44,7 +44,7 @@ export class MyTexture{
       const color = vec4().toVar();
       color.assign(vec4(
         // @ts-ignore
-        float(cell.get('typo')).div(255.0),
+        float(cell.get('kind')).div(255.0),
         // @ts-ignore
         cell.get('color'),
         1.0,
