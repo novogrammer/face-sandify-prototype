@@ -41,7 +41,6 @@ export class MyTexture{
     // unpackCell関数  
     const unpackCell = Fn(([color]:[ReturnType<typeof vec4>]) => {  
       const cell = Cell({
-        // @ts-ignore
         kind:int(color.r.mul(255.0)),
         color:color.g,
       });
@@ -51,9 +50,7 @@ export class MyTexture{
     // packCell関数
     const packCell = Fn(([cell]:[ReturnType<typeof Cell>]) => {
       const color = vec4(
-        // @ts-ignore
         float(cell.get('kind')).div(255.0),
-        // @ts-ignore
         cell.get('color'),
         1.0,
         1.0
@@ -80,22 +77,17 @@ export class MyTexture{
       If(eachProgress.lessThanEqual(0.1),()=>{
         // 初期化処理
         If(uv.sub(0).length().lessThanEqual(0.5),()=>{
-          // @ts-ignore
           cellColorNext.assign(packCell(Cell({
-            // @ts-ignore
             kind:int(KIND_SAND),
             color:float(0),
           })));
         }).Else(()=>{
-          // @ts-ignore
           cellColorNext.assign(packCell(Cell({
-            // @ts-ignore
             kind:int(KIND_AIR),
             color:float(1),
           })));
         });
       }).Else(()=>{
-        // @ts-ignore
         cellColorNext.assign(packCell(cellUp));
       });
 
