@@ -47,7 +47,7 @@ export class MyTexture{
     });  
     
     // packCell関数
-    const packCell = Fn(([cell]:[typeof Cell]) => {
+    const packCell = Fn(([cell]:[ReturnType<typeof Cell>]) => {
       const color = vec4(
         // @ts-ignore
         float(cell.get('kind')).div(255.0),
