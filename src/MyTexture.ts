@@ -1,5 +1,6 @@
-import { float, Fn, fract, If, instanceIndex, int, struct, texture, textureLoad, textureStore, time, uvec2, vec2, vec3, vec4 } from 'three/tsl';
+import { float, Fn, fract, If, instanceIndex, int, struct, texture, textureLoad, textureStore, time, uvec2, vec2, vec4 } from 'three/tsl';
 import * as THREE from 'three/webgpu';
+// 
 
 const SHOW_WGSL_CODE=false;
 
