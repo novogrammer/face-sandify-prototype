@@ -38,11 +38,11 @@ export class MyTexture{
     },"Cell");
 
     // unpackCell関数  
-    const unpackCell = Fn(([colorVec]:[ReturnType<typeof vec4>]) => {  
+    const unpackCell = Fn(([color]:[ReturnType<typeof vec4>]) => {  
       const cell = Cell({
         // @ts-ignore
-        kind:int(colorVec.r.mul(255.0)),
-        color:colorVec.g,
+        kind:int(color.r.mul(255.0)),
+        color:color.g,
       });
       return cell;  
     });  
