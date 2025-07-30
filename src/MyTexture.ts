@@ -35,7 +35,8 @@ export class MyTexture{
     const Cell = struct({
         kind: 'int',
         color: 'float'
-    });
+    },"Cell");
+
     // unpackCell関数  
     const unpackCell = Fn(([colorVec]:[ReturnType<typeof vec4>]) => {  
       const cell = Cell({
