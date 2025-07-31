@@ -1,5 +1,5 @@
 import { getElementSize } from './dom_utils';
-import { MyTexture } from './MyTexture';
+import { SandSimulator } from './SandSimulator';
 import './style.scss'
 
 import * as THREE from 'three/webgpu';
@@ -40,8 +40,8 @@ async function mainAsync(){
   const geometry = new THREE.BoxGeometry( 1, 1, 1 );
   const material = new THREE.MeshStandardNodeMaterial();
 
-  const myTexture = new MyTexture(128,128);
-  material.colorNode = myTexture.getOutputTextureNode();
+  const sandSimulator = new SandSimulator(128,128);
+  material.colorNode = sandSimulator.getOutputTextureNode();
   const cube = new THREE.Mesh( geometry, material );
   scene.add( cube );
 
@@ -76,8 +76,8 @@ async function mainAsync(){
     // cube.rotation.x += 0.01;
     // cube.rotation.y += 0.01;
 
-    await myTexture.updateFrameAsync(renderer);
-    material.colorNode=myTexture.getOutputTextureNode();
+    await sandSimulator.updateFrameAsync(renderer);
+    material.colorNode=sandSimulator.getOutputTextureNode();
     material.needsUpdate=true;
 
     renderer.render( scene, camera );

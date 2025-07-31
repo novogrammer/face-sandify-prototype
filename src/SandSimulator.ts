@@ -9,7 +9,7 @@ const KIND_SAND=1;
 // const KIND_WALL=2;
 
 
-export class MyTexture{
+export class SandSimulator{
   width:number;
   height:number;
 
