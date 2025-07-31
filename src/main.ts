@@ -73,8 +73,8 @@ async function mainAsync(){
       return;
     }
     isComputing=true;
-    cube.rotation.x += 0.01;
-    cube.rotation.y += 0.01;
+    // cube.rotation.x += 0.01;
+    // cube.rotation.y += 0.01;
 
     await myTexture.updateFrameAsync(renderer);
     material.colorNode=myTexture.getOutputTextureNode();
