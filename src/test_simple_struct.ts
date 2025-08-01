@@ -1,4 +1,4 @@
-import { float, Fn, struct, type ShaderNodeObject } from "three/tsl";
+import { float, Fn, struct } from "three/tsl";
 import { NodeMaterial } from "three/webgpu";
 
 export function testSimpleStructNode(material:NodeMaterial){

@@ -1,12 +1,12 @@
-import { float, Fn, fract, If, instanceIndex, int, struct, texture, textureLoad, textureStore, time, uvec2, vec2, vec4 } from 'three/tsl';
+import { float, Fn, fract, If, instanceIndex, int, round, struct, texture, textureLoad, textureStore, time, uvec2, vec2, vec3, vec4 } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 // 
 
 const SHOW_WGSL_CODE=false;
 
-const KIND_AIR=0;
-const KIND_SAND=1;
-// const KIND_WALL=2;
+const KIND_AIR=int(0);
+const KIND_SAND=int(1);
+const KIND_WALL=int(2);
 
 // Cell構造体の定義
 const Cell = struct({
@@ -17,7 +17,7 @@ const Cell = struct({
 // unpackCell関数  
 const unpackCell = Fn(([color]:[ReturnType<typeof vec4>]) => {  
   const cell = Cell({
-    kind:int(color.r.mul(255.0)),
+    kind:int(round(color.r.mul(255.0))),
     color:color.g,
   });
   return cell;  
@@ -33,7 +33,24 @@ const packCell = Fn(([cell]:[ReturnType<typeof Cell>]) => {
   );
   return color;
 });
+// const toLuminance = Fn(([rgb]:[ReturnType<typeof vec3>])=>{
+//   return dot(rgb,vec3(0.299, 0.587, 0.114));
+// });
 
+const toColor = Fn(([cell]:[ReturnType<typeof Cell>])=>{
+  const rgb=vec3(1.0).toVar();
+  
+  If(cell.get("kind").equal(KIND_WALL),()=>{
+    rgb.assign(vec3(0.0,cell.get("color"),1.0));
+
+  }).ElseIf(cell.get("kind").equal(KIND_SAND),()=>{
+    rgb.assign(vec3(1.0,cell.get("color"),0.0));
+
+  }).Else(()=>{
+    rgb.assign(vec3(0.0));
+  })
+  return vec4(rgb,1.0);
+});
 
 export class SandSimulator{
   width:number;
@@ -76,13 +93,13 @@ export class SandSimulator{
         // 初期化処理
         If(uv.sub(0).length().lessThanEqual(0.5),()=>{
           cellColorNext.assign(packCell(Cell({
-            kind:int(KIND_SAND),
-            color:float(0),
+            kind:KIND_SAND,
+            color:float(1),
           })));
         }).Else(()=>{
           cellColorNext.assign(packCell(Cell({
-            kind:int(KIND_AIR),
-            color:float(1),
+            kind:KIND_AIR,
+            color:float(0),
           })));
         });
       }).Else(()=>{
@@ -101,9 +118,11 @@ export class SandSimulator{
     this.outputTexture=inputTexture;
   }
 
-  getOutputTextureNode(){
-
-    return texture(this.outputTexture);
+  getColorNode(){
+    // return texture(this.outputTexture);
+    const cell = unpackCell(texture(this.outputTexture));
+    const color=toColor(cell);
+    return color;
   }
 
   async updateFrameAsync(renderer:THREE.WebGPURenderer) {  

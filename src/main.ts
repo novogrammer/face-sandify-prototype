@@ -41,7 +41,6 @@ async function mainAsync(){
   const material = new THREE.MeshStandardNodeMaterial();
 
   const sandSimulator = new SandSimulator(128,128);
-  material.colorNode = sandSimulator.getOutputTextureNode();
   const cube = new THREE.Mesh( geometry, material );
   scene.add( cube );
 
@@ -77,8 +76,14 @@ async function mainAsync(){
     // cube.rotation.y += 0.01;
 
     await sandSimulator.updateFrameAsync(renderer);
-    material.colorNode=sandSimulator.getOutputTextureNode();
+    material.colorNode=sandSimulator.getColorNode();
     material.needsUpdate=true;
+
+    // {
+    //   const rawShader = await renderer.debug.getShaderAsync( scene, camera, cube );
+    //   console.log(rawShader);
+    //   debugger;
+    // }
 
     renderer.render( scene, camera );
     isComputing=false;
