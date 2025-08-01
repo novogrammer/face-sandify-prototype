@@ -69,6 +69,8 @@ export class SandSimulator{
       texture.type=THREE.HalfFloatType;
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
+      texture.minFilter = THREE.NearestFilter;
+      texture.magFilter = THREE.NearestFilter;
       return texture;
     }
     this.inputTexture=makeTexture();
