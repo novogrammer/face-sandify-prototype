@@ -1,4 +1,4 @@
-import { float, Fn, fract, If, instanceIndex, int, round, struct, texture, textureLoad, textureStore, time, uvec2, vec2, vec3, vec4 } from 'three/tsl';
+import { array, bool, float, Fn, fract, frameId, If, instanceIndex, int, Loop, round, select, sin, struct, texture, textureLoad, textureStore, time, uvec2, vec2, vec3, vec4 } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 // 
 
@@ -79,34 +79,103 @@ export class SandSimulator{
     
     // コンピュートシェーダーの定義  
     this.computeShader = Fn(([inputTexture, outputTexture]:[THREE.StorageTexture,THREE.StorageTexture]) => {
-      const coord = uvec2(instanceIndex.mod(width), instanceIndex.div(width));  
-      
-      // 前フレームのデータを読み込み  
-      // const cell = unpackCell(textureLoad(inputTexture, coord));
-      const cellUp = unpackCell(textureLoad(inputTexture, coord.add(uvec2(0,1)).mod((uvec2(width,height)))));
-      
-      const cellColorNext=vec4(0.0).toVar();
-      
-      // UV座標を手動で計算  
-      const uv = vec2(coord).div(vec2(width, height));
+      const coord = uvec2(instanceIndex.mod(width), instanceIndex.div(width)).toVar("coord");
+      // UV座標を手動で計算
+      const uv = vec2(coord).div(vec2(width, height)).toVar("uv");
 
-      const eachProgress = fract(time.div(5));
+      const useLeftPriority = frameId.mod(2).equal(int(0)).toVar("useLeftPriority");
+      const useLeftFactor = vec2(select(useLeftPriority , 1.0 , -1.0), 1.0).toVar("useLeftFactor");
+
+
+      // 前フレームのデータを読み込み  
+      const cellNeighborList = array([
+        Cell(), Cell(), Cell(),
+        Cell(), Cell(), Cell(),
+        Cell(), Cell(), Cell(),
+      ]).toVar("cellNeighborList");
+      Loop(3,3,({i,j})=>{
+        const index = int(j).mul(3).add(i).toVar("index");
+        const x=int(i).sub(1).toVar("x");
+        const y=int(j).sub(1).toVar("y");
+        const offset = uvec2(x,y).mul(useLeftFactor).toVar("offset");
+        const uvNeighbor = coord.add(offset).mod((uvec2(width,height))).toVar("uvNeighbor");
+
+        const cell = unpackCell(textureLoad(inputTexture, uvNeighbor)).toVar("cell");
+
+        cellNeighborList.element(index).assign(cell)
+      });
+      
+      const cellSelf = cellNeighborList.element(int(1 * 3 + 1)).toVar("cellSelf");
+
+      const cellUp = cellNeighborList.element(int(2 * 3 + 1)).toVar("cellUp");
+      const cellFirstDiagonalUp = cellNeighborList.element(int(2 * 3 + 0)).toVar("cellFirstDiagonalUp");
+      const cellFirstSideUp = cellNeighborList.element(int(1 * 3 + 0)).toVar("cellFirstSideUp");
+      const cellSecondDiagonalUp = cellNeighborList.element(int(2 * 3 + 2)).toVar("cellSecondDiagonalUp");
+      const cellSecondSideUp = cellNeighborList.element(int(1 * 3 + 2)).toVar("cellSecondSideUp");
+
+      const cellDown = cellNeighborList.element(int(0 * 3 + 1)).toVar("cellDown");
+      const cellFirstDiagonalDown = cellNeighborList.element(int(0 * 3 + 2)).toVar("cellFirstDiagonalDown");
+      const cellFirstSideDown = cellNeighborList.element(int(1 * 3 + 2)).toVar("cellFirstSideDown");
+      const cellSecondDiagonalDown = cellNeighborList.element(int(0 * 3 + 0)).toVar("cellSecondDiagonalDown");
+      const cellSecondSideDown = cellNeighborList.element(int(1 * 3 + 0)).toVar("cellSecondSideDown");
+
+      const cellNext = Cell().toVar("cellNext");
+
+      cellNext.assign(cellSelf);
+
+      If(cellSelf.get("kind").equal(KIND_AIR),()=>{
+        // watch up
+
+        If(cellUp.get("kind").equal(KIND_SAND),()=>{
+          cellNext.assign(cellUp);
+        }).ElseIf(bool(cellFirstDiagonalUp.get("kind").equal(KIND_SAND)).and(bool(cellFirstSideUp.get("kind").notEqual(KIND_AIR))),()=>{
+          cellNext.assign(cellFirstDiagonalUp);
+        }).ElseIf(bool(cellSecondDiagonalUp.get("kind").equal(KIND_SAND)).and(bool(cellSecondSideUp.get("kind").notEqual(KIND_AIR))),()=>{
+          cellNext.assign(cellSecondDiagonalUp);
+        }).Else(()=>{
+          // DO NOTHING
+        });
+
+      }).ElseIf(cellSelf.get("kind").equal(KIND_SAND), ()=>{
+        // watch down
+
+        // andの不具合のため変数にしておく
+
+        const cellAir=Cell(KIND_AIR,float(0)).toVar("cellAir");
+        If(cellDown.get("kind").equal(KIND_AIR),()=>{
+          cellNext.assign(cellAir);
+        }).ElseIf(bool(cellFirstDiagonalDown.get("kind").equal(KIND_AIR)).and(bool(cellFirstSideDown.get("kind").equal(KIND_AIR))),()=>{
+          cellNext.assign(cellAir);
+        }).ElseIf(bool(cellSecondDiagonalDown.get("kind").equal(KIND_AIR)).and(bool(cellSecondSideDown.get("kind").equal(KIND_AIR))),()=>{
+          cellNext.assign(cellAir);
+        }).Else(()=>{
+          // DO NOTHING
+        });
+      }).Else(()=>{
+        // DO NOTHING
+      });
+      
+
+      
+      const eachProgress = fract(time.div(5)).toVar("eachProgress");
+
+
       If(eachProgress.lessThanEqual(0.1),()=>{
         // 初期化処理
         If(uv.sub(0).length().lessThanEqual(0.5),()=>{
-          cellColorNext.assign(packCell(Cell({
+          cellNext.assign(Cell({
             kind:KIND_SAND,
-            color:float(1),
-          })));
+            color:float(sin(uv.mul(360*10).radians()).length()),
+          }));
         }).Else(()=>{
-          cellColorNext.assign(packCell(Cell({
+          cellNext.assign(Cell({
             kind:KIND_AIR,
             color:float(0),
-          })));
+          }));
         });
-      }).Else(()=>{
-        cellColorNext.assign(packCell(cellUp));
       });
+
+      const cellColorNext=packCell(cellNext).toVar("cellColorNext");
 
       // 結果を書き込み  
       textureStore(outputTexture, coord, cellColorNext);  
