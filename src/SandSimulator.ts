@@ -8,6 +8,32 @@ const KIND_AIR=0;
 const KIND_SAND=1;
 // const KIND_WALL=2;
 
+// Cell構造体の定義
+const Cell = struct({
+    kind: 'int',
+    color: 'float'
+},"Cell");
+
+// unpackCell関数  
+const unpackCell = Fn(([color]:[ReturnType<typeof vec4>]) => {  
+  const cell = Cell({
+    kind:int(color.r.mul(255.0)),
+    color:color.g,
+  });
+  return cell;  
+});  
+
+// packCell関数
+const packCell = Fn(([cell]:[ReturnType<typeof Cell>]) => {
+  const color = vec4(
+    float(cell.get('kind')).div(255.0),
+    cell.get('color'),
+    1.0,
+    1.0
+  );
+  return color;
+});
+
 
 export class SandSimulator{
   width:number;
@@ -31,34 +57,6 @@ export class SandSimulator{
     this.inputTexture=makeTexture();
     // console.log(`flipY: ${this.inputTexture.flipY}`);
     this.outputTexture=makeTexture();
-
-    // Cell構造体の定義
-    const Cell = struct({
-        kind: 'int',
-        color: 'float'
-    },"Cell");
-
-    // unpackCell関数  
-    const unpackCell = Fn(([color]:[ReturnType<typeof vec4>]) => {  
-      const cell = Cell({
-        kind:int(color.r.mul(255.0)),
-        color:color.g,
-      });
-      return cell;  
-    });  
-    
-    // packCell関数
-    const packCell = Fn(([cell]:[ReturnType<typeof Cell>]) => {
-      const color = vec4(
-        float(cell.get('kind')).div(255.0),
-        cell.get('color'),
-        1.0,
-        1.0
-      );
-      return color;
-    });
-
-
     
     // コンピュートシェーダーの定義  
     this.computeShader = Fn(([inputTexture, outputTexture]:[THREE.StorageTexture,THREE.StorageTexture]) => {
