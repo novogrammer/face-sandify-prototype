@@ -3,7 +3,7 @@ import { SandSimulator } from './SandSimulator';
 import './style.scss'
 
 import * as THREE from 'three/webgpu';
-import { testStructAsync } from './test_struct';
+// import { testStructAsync } from './test_struct';
 
 
 async function mainAsync(){
@@ -61,9 +61,9 @@ async function mainAsync(){
     camera.updateProjectionMatrix();
   }
 
-  testStructAsync(renderer).catch((error)=>{
-    console.error(error);
-  })
+  // testStructAsync(renderer).catch((error)=>{
+  //   console.error(error);
+  // })
 
   let isComputing=false;
   async function animate(){
