@@ -1,8 +1,8 @@
 import { array, bool, float, Fn, fract, frameId, If, instanceIndex, int, Loop, round, select, sin, struct, texture, textureLoad, textureStore, time, uvec2, vec2, vec3, vec4 } from 'three/tsl';
 import * as THREE from 'three/webgpu';
+import { SHOW_WGSL_CODE } from './constants';
 // 
 
-const SHOW_WGSL_CODE=false;
 
 const KIND_AIR=int(0);
 const KIND_SAND=int(1);

@@ -1,3 +1,4 @@
+import { ENABLE_FORCE_WEBGL } from './constants';
 import { getElementSize } from './dom_utils';
 import { SandSimulator } from './SandSimulator';
 import './style.scss'
@@ -29,7 +30,7 @@ async function mainAsync(){
 
 
   const renderer = new THREE.WebGPURenderer({
-    // forceWebGL:true,
+    forceWebGL:ENABLE_FORCE_WEBGL,
   });
   renderer.setSize( width, height );
   renderer.setAnimationLoop( animate );
