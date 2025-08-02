@@ -1,3 +1,4 @@
+import Stats from "stats-gl";
 import { ENABLE_FORCE_WEBGL } from './constants';
 import { getElementSize } from './dom_utils';
 import { SandSimulator } from './SandSimulator';
@@ -36,6 +37,15 @@ async function mainAsync(){
   renderer.setAnimationLoop( animate );
   renderer.domElement.classList.add("p-background__canvas");
   backgroundElement.appendChild( renderer.domElement );
+  const stats=new Stats({
+    trackGPU: true,
+    trackHz: true,
+  });
+  stats.init( renderer );
+  stats.dom.style.top="0px";
+  document.body.appendChild( stats.dom );
+
+
 
 
   const geometry = new THREE.BoxGeometry( 1, 1, 1 );
@@ -78,7 +88,6 @@ async function mainAsync(){
 
     await sandSimulator.updateFrameAsync(renderer);
     material.colorNode=sandSimulator.getColorNode();
-    material.needsUpdate=true;
 
     // {
     //   const rawShader = await renderer.debug.getShaderAsync( scene, camera, cube );
@@ -87,6 +96,7 @@ async function mainAsync(){
     // }
 
     renderer.render( scene, camera );
+    stats.update();
     isComputing=false;
   }
 
