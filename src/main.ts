@@ -1,5 +1,5 @@
 import Stats from "stats-gl";
-import { ENABLE_FORCE_WEBGL } from './constants';
+import { ENABLE_FORCE_WEBGL, SAND_SIMULATOR_WIDTH, SAND_SIMULATOR_HEIGHT } from './constants';
 import { getElementSize } from './dom_utils';
 import { SandSimulator } from './SandSimulator';
 import './style.scss'
@@ -51,7 +51,7 @@ async function mainAsync(){
   const geometry = new THREE.BoxGeometry( 1, 1, 1 );
   const material = new THREE.MeshStandardNodeMaterial();
 
-  const sandSimulator = new SandSimulator(128,128);
+  const sandSimulator = new SandSimulator(SAND_SIMULATOR_WIDTH,SAND_SIMULATOR_HEIGHT);
   const cube = new THREE.Mesh( geometry, material );
   scene.add( cube );
 
