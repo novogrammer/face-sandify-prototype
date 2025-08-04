@@ -1,4 +1,4 @@
-import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, sin, struct, texture, textureLoad, textureStore, uvec2, vec2, vec3, vec4 } from 'three/tsl';
+import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, sin, struct, texture, textureLoad, textureStore, uniform, uvec2, vec2, vec3, vec4, type ShaderNodeObject } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 import { SHOW_WGSL_CODE } from './constants';
 // 
@@ -56,9 +56,19 @@ export class SandSimulator{
   width:number;
   height:number;
 
-  inputTexture:THREE.StorageTexture;
-  outputTexture:THREE.StorageTexture;
-  computeShader:THREE.TSL.ShaderNodeFn<[THREE.StorageTexture, THREE.StorageTexture,boolean]>;
+  storageTexturePing:THREE.StorageTexture;
+  storageTexturePong:THREE.StorageTexture;
+
+  uIsCapturing:ShaderNodeObject<THREE.UniformNode<number>>;
+
+  computeNodePing:ShaderNodeObject<THREE.ComputeNode>;
+  computeNodePong:ShaderNodeObject<THREE.ComputeNode>;
+
+  colorNodePing:ShaderNodeObject<THREE.TSL.ShaderCallNodeInternal>;
+  colorNodePong:ShaderNodeObject<THREE.TSL.ShaderCallNodeInternal>;
+
+
+  isPing:boolean=true;
 
   constructor(width:number,height:number){
     this.width=width;
@@ -73,12 +83,15 @@ export class SandSimulator{
       texture.magFilter = THREE.NearestFilter;
       return texture;
     }
-    this.inputTexture=makeTexture();
-    // console.log(`flipY: ${this.inputTexture.flipY}`);
-    this.outputTexture=makeTexture();
+    this.storageTexturePing=makeTexture();
+    this.storageTexturePong=makeTexture();
+    
+
+    this.uIsCapturing=uniform(0);
+    
     
     // コンピュートシェーダーの定義  
-    this.computeShader = Fn(([inputTexture, outputTexture,isCapturing]:[THREE.StorageTexture,THREE.StorageTexture,boolean]) => {
+    const computeShader = Fn(([inputTexture, outputTexture]:[THREE.StorageTexture,THREE.StorageTexture]) => {
       const coord = uvec2(instanceIndex.mod(width), instanceIndex.div(width)).toVar("coord");
       // UV座標を手動で計算
       const uv = vec2(coord).div(vec2(width, height)).toVar("uv");
@@ -154,10 +167,7 @@ export class SandSimulator{
       });
       
 
-      
-
-
-      If(bool(isCapturing),()=>{
+      If(bool(this.uIsCapturing),()=>{
         // 初期化処理
         If(uv.sub(0).length().lessThanEqual(0.5),()=>{
           cellNext.assign(Cell({
@@ -178,19 +188,30 @@ export class SandSimulator{
       textureStore(outputTexture, coord, cellColorNext);  
     });  
 
+    this.computeNodePing=computeShader(this.storageTexturePing,this.storageTexturePong).compute(this.width*this.height);
+    this.computeNodePong=computeShader(this.storageTexturePong,this.storageTexturePing).compute(this.width*this.height);
 
+    {
+      const cell = unpackCell(texture(this.storageTexturePong));
+      const color=toColor(cell);
+      this.colorNodePing=color;
+    }
+    {
+      const cell = unpackCell(texture(this.storageTexturePing));
+      const color=toColor(cell);
+      this.colorNodePong=color;
+    }
   }
   toggleTexture(){
-    const {inputTexture,outputTexture}=this;
-    this.inputTexture=outputTexture;
-    this.outputTexture=inputTexture;
+    this.isPing=!this.isPing;
   }
 
   getColorNode(){
-    // return texture(this.outputTexture);
-    const cell = unpackCell(texture(this.outputTexture));
-    const color=toColor(cell);
-    return color;
+    if(this.isPing){
+      return this.colorNodePing;
+    }else{
+      return this.colorNodePong;
+    }
   }
 
   async updateFrameAsync(renderer:THREE.WebGPURenderer,isCapturing:boolean) {  
@@ -198,7 +219,14 @@ export class SandSimulator{
 
 
     // コンピュートシェーダーを実行  
-    const computeNode = this.computeShader(this.inputTexture,this.outputTexture,isCapturing).compute(this.width*this.height);
+    this.uIsCapturing.value=isCapturing?1:0;
+
+    let computeNode;
+    if(this.isPing){
+      computeNode=this.computeNodePing;
+    }else{
+      computeNode=this.computeNodePong;
+    }
     await renderer.computeAsync(computeNode);  
 
     if(SHOW_WGSL_CODE){
