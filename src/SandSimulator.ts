@@ -58,7 +58,7 @@ export class SandSimulator{
 
   inputTexture:THREE.StorageTexture;
   outputTexture:THREE.StorageTexture;
-  computeShader:THREE.TSL.ShaderNodeFn<[THREE.StorageTexture, THREE.StorageTexture]>;
+  computeShader:THREE.TSL.ShaderNodeFn<[THREE.StorageTexture, THREE.StorageTexture,boolean]>;
 
   constructor(width:number,height:number){
     this.width=width;
@@ -78,7 +78,7 @@ export class SandSimulator{
     this.outputTexture=makeTexture();
     
     // コンピュートシェーダーの定義  
-    this.computeShader = Fn(([inputTexture, outputTexture]:[THREE.StorageTexture,THREE.StorageTexture]) => {
+    this.computeShader = Fn(([inputTexture, outputTexture,isCapturing]:[THREE.StorageTexture,THREE.StorageTexture,boolean]) => {
       const coord = uvec2(instanceIndex.mod(width), instanceIndex.div(width)).toVar("coord");
       // UV座標を手動で計算
       const uv = vec2(coord).div(vec2(width, height)).toVar("uv");
@@ -139,8 +139,6 @@ export class SandSimulator{
       }).ElseIf(cellSelf.get("kind").equal(KIND_SAND), ()=>{
         // watch down
 
-        // andの不具合のため変数にしておく
-
         const cellAir=Cell(KIND_AIR,float(0)).toVar("cellAir");
         If(cellDown.get("kind").equal(KIND_AIR),()=>{
           cellNext.assign(cellAir);
@@ -157,10 +155,9 @@ export class SandSimulator{
       
 
       
-      const eachProgress = fract(time.div(5)).toVar("eachProgress");
 
 
-      If(eachProgress.lessThanEqual(0.1),()=>{
+      If(bool(isCapturing),()=>{
         // 初期化処理
         If(uv.sub(0).length().lessThanEqual(0.5),()=>{
           cellNext.assign(Cell({
@@ -196,12 +193,12 @@ export class SandSimulator{
     return color;
   }
 
-  async updateFrameAsync(renderer:THREE.WebGPURenderer) {  
+  async updateFrameAsync(renderer:THREE.WebGPURenderer,isCapturing:boolean) {  
     this.toggleTexture();
 
 
     // コンピュートシェーダーを実行  
-    const computeNode = this.computeShader(this.inputTexture,this.outputTexture).compute(this.width*this.height);
+    const computeNode = this.computeShader(this.inputTexture,this.outputTexture,isCapturing).compute(this.width*this.height);
     await renderer.computeAsync(computeNode);  
 
     if(SHOW_WGSL_CODE){

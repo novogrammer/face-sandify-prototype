@@ -77,16 +77,22 @@ async function mainAsync(){
   // })
 
   let isComputing=false;
+  let previousTime=-0.001;
   async function animate(){
     if(isComputing){
       console.log("skip");
       return;
     }
     isComputing=true;
+    const time=performance.now()*0.001;
+
+    const duration=5;
+    const isCapturing = Math.floor(previousTime/duration) < Math.floor(time/duration);
+    
     // cube.rotation.x += 0.01;
     // cube.rotation.y += 0.01;
 
-    await sandSimulator.updateFrameAsync(renderer);
+    await sandSimulator.updateFrameAsync(renderer,isCapturing);
     material.colorNode=sandSimulator.getColorNode();
 
     // {
@@ -97,6 +103,7 @@ async function mainAsync(){
 
     renderer.render( scene, camera );
     stats.update();
+    previousTime=time;
     isComputing=false;
   }
 
