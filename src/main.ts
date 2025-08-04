@@ -31,8 +31,10 @@ async function mainAsync(){
 
 
   const renderer = new THREE.WebGPURenderer({
+    antialias:true,
     forceWebGL:ENABLE_FORCE_WEBGL,
   });
+  renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize( width, height );
   renderer.setAnimationLoop( animate );
   renderer.domElement.classList.add("p-background__canvas");
@@ -69,6 +71,7 @@ async function mainAsync(){
       throw new Error("backgroundElement is null");
     }
     const {width,height}=getElementSize(backgroundElement);
+    renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(width,height);
     camera.aspect=width/height;
     camera.updateProjectionMatrix();
