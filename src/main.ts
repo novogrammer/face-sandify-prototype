@@ -38,8 +38,10 @@ async function mainAsync(){
   renderer.domElement.classList.add("p-background__canvas");
   backgroundElement.appendChild( renderer.domElement );
   const stats=new Stats({
-    trackGPU: true,
+    precision:3,
     trackHz: true,
+    trackGPU: true,
+    trackCPT: true,
   });
   stats.init( renderer );
   stats.dom.style.top="0px";
@@ -88,11 +90,12 @@ async function mainAsync(){
 
     const duration=5;
     const isCapturing = Math.floor(previousTime/duration) < Math.floor(time/duration);
-    
+
     // cube.rotation.x += 0.01;
     // cube.rotation.y += 0.01;
 
     await sandSimulator.updateFrameAsync(renderer,isCapturing);
+    renderer.resolveTimestampsAsync( THREE.TimestampQuery.COMPUTE );
     material.colorNode=sandSimulator.getColorNode();
 
     // {
@@ -101,7 +104,8 @@ async function mainAsync(){
     //   debugger;
     // }
 
-    renderer.render( scene, camera );
+    await renderer.renderAsync( scene, camera );
+    renderer.resolveTimestampsAsync( THREE.TimestampQuery.RENDER );
     stats.update();
     previousTime=time;
     isComputing=false;
