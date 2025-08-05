@@ -38,9 +38,9 @@ const packCell = Fn(([cell]:[ReturnType<typeof Cell>]) => {
   );
   return color;
 });
-const toLuminance = Fn(([rgb]:[ReturnType<typeof vec3>])=>{
-  return dot(rgb,vec3(0.299, 0.587, 0.114));
-});
+// const toLuminance = Fn(([rgb]:[ReturnType<typeof vec3>])=>{
+//   return dot(rgb,vec3(0.299, 0.587, 0.114));
+// });
 
 const toColor = Fn(([cell]:[ReturnType<typeof Cell>])=>{
   const rgb=vec3(1.0).toVar();
