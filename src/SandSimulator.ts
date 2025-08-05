@@ -11,14 +11,14 @@ const KIND_WALL=int(2);
 // Cell構造体の定義
 const Cell = struct({
     kind: 'int',
-    color: 'float'
+    luminance: 'float'
 },"Cell");
 
 // unpackCell関数  
 const unpackCell = Fn(([color]:[ReturnType<typeof vec4>]) => {  
   const cell = Cell({
     kind:int(round(color.r.mul(255.0))),
-    color:color.g,
+    luminance:color.g,
   });
   return cell;  
 });  
@@ -27,7 +27,7 @@ const unpackCell = Fn(([color]:[ReturnType<typeof vec4>]) => {
 const packCell = Fn(([cell]:[ReturnType<typeof Cell>]) => {
   const color = vec4(
     float(cell.get('kind')).div(255.0),
-    cell.get('color'),
+    cell.get('luminance'),
     1.0,
     1.0
   );
@@ -41,10 +41,10 @@ const toColor = Fn(([cell]:[ReturnType<typeof Cell>])=>{
   const rgb=vec3(1.0).toVar();
   
   If(cell.get("kind").equal(KIND_WALL),()=>{
-    rgb.assign(vec3(0.0,cell.get("color"),1.0));
+    rgb.assign(vec3(0.0,cell.get("luminance"),1.0));
 
   }).ElseIf(cell.get("kind").equal(KIND_SAND),()=>{
-    rgb.assign(vec3(1.0,cell.get("color"),0.0));
+    rgb.assign(vec3(1.0,cell.get("luminance"),0.0));
 
   }).Else(()=>{
     rgb.assign(vec3(0.0));
@@ -180,13 +180,13 @@ export class SandSimulator{
         If(uv.sub(0.5).length().lessThanEqual(0.4),()=>{
           cellNext.assign(Cell({
             kind:KIND_SAND,
-            // color:float(sin(uv.mul(360*10).radians()).length()),
-            color:toLuminance(texture(this.webcamTexture,uvWebcam)),
+            // luminance:float(sin(uv.mul(360*10).radians()).length()),
+            luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
           }));
         }).Else(()=>{
           cellNext.assign(Cell({
             kind:KIND_AIR,
-            color:float(0),
+            luminance:float(0),
           }));
         });
       });
