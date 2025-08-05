@@ -1,4 +1,4 @@
-import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, uvec2, vec2, vec3, vec4, type ShaderNodeObject } from 'three/tsl';
+import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, uvec2, vec2, vec3, vec4, type ShaderNodeObject, mix } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 import { SHOW_WGSL_CODE } from './constants';
 // 
@@ -39,13 +39,12 @@ const toLuminance = Fn(([rgb]:[ReturnType<typeof vec3>])=>{
 
 const toColor = Fn(([cell]:[ReturnType<typeof Cell>])=>{
   const rgb=vec3(1.0).toVar();
-  
+  const luminance=cell.get("luminance").toVar();
   If(cell.get("kind").equal(KIND_WALL),()=>{
-    rgb.assign(vec3(0.0,cell.get("luminance"),1.0));
+    rgb.assign(vec3(0.5,0.5,1.0).mul(luminance));
 
   }).ElseIf(cell.get("kind").equal(KIND_SAND),()=>{
-    rgb.assign(vec3(1.0,cell.get("luminance"),0.0));
-
+    rgb.assign(mix(vec3(0.75,0.0,0.0),vec3(1.0,0.75,0.0),luminance));
   }).Else(()=>{
     rgb.assign(vec3(0.0));
   })
