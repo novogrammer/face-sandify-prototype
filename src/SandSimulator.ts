@@ -1,4 +1,4 @@
-import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, uvec2, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length } from 'three/tsl';
+import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, uvec2, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length, deltaTime } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 import { SHOW_WGSL_CODE } from './constants';
 // 
@@ -7,11 +7,15 @@ import { SHOW_WGSL_CODE } from './constants';
 const KIND_AIR=int(0);
 const KIND_SAND=int(1);
 const KIND_WALL=int(2);
+const TTL=float(25);
+const CAPTURE_POINT=vec2(0.5,0.75);
+const CAPTURE_RADIUS=float(0.2)
 
 // Cell構造体の定義
 const Cell = struct({
     kind: 'int',
-    luminance: 'float'
+    luminance: 'float',
+    ttl: 'float',
 },"Cell");
 
 // unpackCell関数  
@@ -19,6 +23,7 @@ const unpackCell = Fn(([color]:[ReturnType<typeof vec4>]) => {
   const cell = Cell({
     kind:int(round(color.r.mul(255.0))),
     luminance:color.g,
+    ttl:color.b,
   });
   return cell;  
 });  
@@ -28,7 +33,7 @@ const packCell = Fn(([cell]:[ReturnType<typeof Cell>]) => {
   const color = vec4(
     float(cell.get('kind')).div(255.0),
     cell.get('luminance'),
-    1.0,
+    cell.get('ttl'),
     1.0
   );
   return color;
@@ -146,6 +151,7 @@ export class SandSimulator{
       const cellSecondSideDown = cellNeighborList.element(int(1 * 3 + 0)).toVar("cellSecondSideDown");
 
       const cellNext = Cell().toVar("cellNext");
+      const cellAir=Cell(KIND_AIR,float(0)).toVar("cellAir");
 
       cellNext.assign(cellSelf);
 
@@ -165,7 +171,6 @@ export class SandSimulator{
       }).ElseIf(cellSelf.get("kind").equal(KIND_SAND), ()=>{
         // watch down
 
-        const cellAir=Cell(KIND_AIR,float(0)).toVar("cellAir");
         If(cellDown.get("kind").equal(KIND_AIR),()=>{
           cellNext.assign(cellAir);
         }).ElseIf(bool(cellFirstDiagonalDown.get("kind").equal(KIND_AIR)).and(bool(cellFirstSideDown.get("kind").equal(KIND_AIR))),()=>{
@@ -182,15 +187,16 @@ export class SandSimulator{
 
       If(bool(this.uIsCapturing),()=>{
         // 初期化処理
-        cellNext.assign(Cell({
-          kind:KIND_AIR,
-          luminance:float(0),
-        }));
-        If(uv.sub(0.5).length().lessThanEqual(0.2),()=>{
+        // cellNext.assign(Cell({
+        //   kind:KIND_AIR,
+        //   luminance:float(0),
+        // }));
+        If(uv.sub(CAPTURE_POINT).length().lessThanEqual(CAPTURE_RADIUS),()=>{
           cellNext.assign(Cell({
             kind:KIND_SAND,
             // luminance:float(sin(uv.mul(360*10).radians()).length()),
             luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
+            ttl:TTL,
           }));
         });
 
@@ -213,6 +219,15 @@ export class SandSimulator{
 
         });
 
+      });
+      If(cellNext.get("kind").equal(KIND_SAND),()=>{
+        const ttl=cellNext.get("ttl").sub(deltaTime);
+        If(ttl.greaterThan(0),()=>{
+          cellNext.get("ttl").assign(ttl);
+        }).Else(()=>{
+          cellNext.assign(cellAir);
+        });
+        
       });
 
       const cellColorNext=packCell(cellNext).toVar("cellColorNext");

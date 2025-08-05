@@ -144,7 +144,7 @@ async function mainAsync(){
     }
 
 
-    const duration=10;
+    const duration=5;
     const isCapturing = Math.floor(previousTime/duration) < Math.floor(time/duration);
 
     // cube.rotation.x += 0.01;
