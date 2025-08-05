@@ -1,4 +1,4 @@
-import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, uvec2, vec2, vec3, vec4, type ShaderNodeObject, mix } from 'three/tsl';
+import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, uvec2, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 import { SHOW_WGSL_CODE } from './constants';
 // 
@@ -41,14 +41,20 @@ const toColor = Fn(([cell]:[ReturnType<typeof Cell>])=>{
   const rgb=vec3(1.0).toVar();
   const luminance=cell.get("luminance").toVar();
   If(cell.get("kind").equal(KIND_WALL),()=>{
-    rgb.assign(vec3(0.5,0.5,1.0).mul(luminance));
-
+    rgb.assign(mix(vec3(0.0,0.0,0.5),vec3(0.0,1.0,1.0),luminance));
   }).ElseIf(cell.get("kind").equal(KIND_SAND),()=>{
     rgb.assign(mix(vec3(0.75,0.0,0.0),vec3(1.0,0.75,0.0),luminance));
   }).Else(()=>{
     rgb.assign(vec3(0.0));
   })
   return vec4(rgb,1.0);
+});
+const distPointSegment=Fn(([p,a,b]:[ReturnType<typeof vec2>,ReturnType<typeof vec2>,ReturnType<typeof vec2>])=>{
+  const pa = p.sub(a).toVar();
+  const ba = b.sub(a).toVar();
+  const t = clamp(dot(pa,ba).div(dot(ba,ba)),0.0,1.0).toVar();
+  const proj = a.add(ba.mul(t)).toVar();
+  return length(p.sub(proj));
 });
 
 export class SandSimulator{
@@ -82,10 +88,10 @@ export class SandSimulator{
       texture.type=THREE.HalfFloatType;
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
-      // texture.minFilter = THREE.NearestFilter;
-      // texture.magFilter = THREE.NearestFilter;
-      texture.minFilter = THREE.LinearFilter;
-      texture.magFilter = THREE.LinearFilter;
+      texture.minFilter = THREE.NearestFilter;
+      texture.magFilter = THREE.NearestFilter;
+      // texture.minFilter = THREE.LinearFilter;
+      // texture.magFilter = THREE.LinearFilter;
       return texture;
     }
     this.storageTexturePing=makeTexture();
@@ -176,18 +182,37 @@ export class SandSimulator{
 
       If(bool(this.uIsCapturing),()=>{
         // 初期化処理
-        If(uv.sub(0.5).length().lessThanEqual(0.4),()=>{
+        cellNext.assign(Cell({
+          kind:KIND_AIR,
+          luminance:float(0),
+        }));
+        If(uv.sub(0.5).length().lessThanEqual(0.2),()=>{
           cellNext.assign(Cell({
             kind:KIND_SAND,
             // luminance:float(sin(uv.mul(360*10).radians()).length()),
             luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
           }));
-        }).Else(()=>{
-          cellNext.assign(Cell({
-            kind:KIND_AIR,
-            luminance:float(0),
-          }));
         });
+
+        const distanceList=array([
+          distPointSegment(uv,vec2(0.0,0.95),vec2(0.3,0.9)),
+          distPointSegment(uv,vec2(1.0,0.95),vec2(0.7,0.9)),
+          distPointSegment(uv,vec2(0.2,0.05),vec2(0.8,0.05)),
+        ]);
+
+        Loop(3,({i})=>{
+          const distance=distanceList.element(int(i)).toVar();
+          If(distance.lessThanEqual(float(3).div(width)),()=>{
+            cellNext.assign(Cell({
+              kind:KIND_WALL,
+              // luminance:float(sin(uv.mul(360*10).radians()).length()),
+              // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
+              luminance:float(1.0),
+            }));
+          });
+
+        });
+
       });
 
       const cellColorNext=packCell(cellNext).toVar("cellColorNext");
