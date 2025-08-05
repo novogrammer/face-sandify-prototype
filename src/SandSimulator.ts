@@ -1,4 +1,4 @@
-import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, sin, struct, texture, textureLoad, textureStore, uniform, uvec2, vec2, vec3, vec4, type ShaderNodeObject } from 'three/tsl';
+import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, uvec2, vec2, vec3, vec4, type ShaderNodeObject } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 import { SHOW_WGSL_CODE } from './constants';
 // 
@@ -33,9 +33,9 @@ const packCell = Fn(([cell]:[ReturnType<typeof Cell>]) => {
   );
   return color;
 });
-// const toLuminance = Fn(([rgb]:[ReturnType<typeof vec3>])=>{
-//   return dot(rgb,vec3(0.299, 0.587, 0.114));
-// });
+const toLuminance = Fn(([rgb]:[ReturnType<typeof vec3>])=>{
+  return dot(rgb,vec3(0.299, 0.587, 0.114));
+});
 
 const toColor = Fn(([cell]:[ReturnType<typeof Cell>])=>{
   const rgb=vec3(1.0).toVar();
@@ -55,11 +55,14 @@ const toColor = Fn(([cell]:[ReturnType<typeof Cell>])=>{
 export class SandSimulator{
   width:number;
   height:number;
+  webcamTexture:THREE.Texture;
+  
 
   storageTexturePing:THREE.StorageTexture;
   storageTexturePong:THREE.StorageTexture;
 
   uIsCapturing:ShaderNodeObject<THREE.UniformNode<number>>;
+  uWebcamTextureSize:ShaderNodeObject<THREE.UniformNode<THREE.Vector2>>;
 
   computeNodePing:ShaderNodeObject<THREE.ComputeNode>;
   computeNodePong:ShaderNodeObject<THREE.ComputeNode>;
@@ -70,9 +73,10 @@ export class SandSimulator{
 
   isPing:boolean=true;
 
-  constructor(width:number,height:number){
+  constructor(width:number,height:number,webcamTexture:THREE.Texture,webcamTextureSize:THREE.Vector2){
     this.width=width;
     this.height=height;
+    this.webcamTexture=webcamTexture;
 
     const makeTexture=()=>{
       const texture=new THREE.StorageTexture(width, height);
@@ -90,6 +94,7 @@ export class SandSimulator{
     
 
     this.uIsCapturing=uniform(0);
+    this.uWebcamTextureSize=uniform(webcamTextureSize);
     
     
     // コンピュートシェーダーの定義  
@@ -97,6 +102,7 @@ export class SandSimulator{
       const coord = uvec2(instanceIndex.mod(width), instanceIndex.div(width)).toVar("coord");
       // UV座標を手動で計算
       const uv = vec2(coord).div(vec2(width, height)).toVar("uv");
+      const uvWebcam=uv.sub(0.5).mul(this.uWebcamTextureSize.yy).div(this.uWebcamTextureSize.xy).add(0.5).toVar("uvWebcam");
 
       const useLeftPriority = frameId.mod(2).equal(int(0)).toVar("useLeftPriority");
       const useLeftFactor = vec2(select(useLeftPriority , 1.0 , -1.0), 1.0).toVar("useLeftFactor");
@@ -171,10 +177,11 @@ export class SandSimulator{
 
       If(bool(this.uIsCapturing),()=>{
         // 初期化処理
-        If(uv.sub(0).length().lessThanEqual(0.5),()=>{
+        If(uv.sub(0.5).length().lessThanEqual(0.4),()=>{
           cellNext.assign(Cell({
             kind:KIND_SAND,
-            color:float(sin(uv.mul(360*10).radians()).length()),
+            // color:float(sin(uv.mul(360*10).radians()).length()),
+            color:toLuminance(texture(this.webcamTexture,uvWebcam)),
           }));
         }).Else(()=>{
           cellNext.assign(Cell({

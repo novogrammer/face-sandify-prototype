@@ -36,7 +36,6 @@ async function mainAsync(){
   });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize( width, height );
-  renderer.setAnimationLoop( animate );
   renderer.domElement.classList.add("p-background__canvas");
   backgroundElement.appendChild( renderer.domElement );
   const stats=new Stats({
@@ -55,11 +54,56 @@ async function mainAsync(){
   const geometry = new THREE.BoxGeometry( 1, 1, 1 );
   const material = new THREE.MeshStandardNodeMaterial();
 
-  const sandSimulator = new SandSimulator(SAND_SIMULATOR_WIDTH,SAND_SIMULATOR_HEIGHT);
+  const webcamVideoElement = document.querySelector<HTMLVideoElement>(".p-webcam-video");
+  if(!webcamVideoElement){
+    throw new Error("webcamVideoElement is null");
+  }
+  let webcamCanvasTexture:THREE.CanvasTexture;
+  if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+    const constraints={
+      video:{
+        width: 1280,
+        height: 720,
+        facingMode: 'user',
+      },
+    };
+    navigator.mediaDevices.getUserMedia(constraints).then(function(stream){
+      webcamVideoElement.srcObject = stream;
+    }).catch(function(error){
+      console.error('Unable to access the camera/webcam.', error);
+    });
+  } else {
+    console.error('MediaDevices interface not available.');
+  }
+  const canvasElement = document.createElement("canvas");
+  await new Promise<void>((resolve)=>{
+    webcamVideoElement.addEventListener('loadedmetadata', () => {
+      webcamVideoElement.play();
+      resolve();
+    },{once:true});
+    
+  });
+  canvasElement.width  = webcamVideoElement.videoWidth;
+  canvasElement.height = webcamVideoElement.videoHeight;
+
+  const ctx=canvasElement.getContext("2d");
+  if(!ctx){
+    throw new Error("ctx is null");
+  }
+  // TODO: このタイミングの描画がうまく反映できていない。
+  await new Promise<void>((resolve)=>{
+    setTimeout(resolve,500);
+  });
+  ctx.drawImage(webcamVideoElement!,0,0);
+
+  webcamCanvasTexture=new THREE.CanvasTexture(canvasElement);
+  
+
+  const sandSimulator = new SandSimulator(SAND_SIMULATOR_WIDTH,SAND_SIMULATOR_HEIGHT,webcamCanvasTexture,new THREE.Vector2(canvasElement.width,canvasElement.height));
   const cube = new THREE.Mesh( geometry, material );
   scene.add( cube );
 
-  camera.position.z = 5;
+  camera.position.z = 2.5;
 
   window.addEventListener("resize",()=>{
     onResize();
@@ -83,6 +127,8 @@ async function mainAsync(){
 
   let isComputing=false;
   let previousTime=-0.001;
+
+  renderer.setAnimationLoop( animate );
   async function animate(){
     if(isComputing){
       console.log("skip");
@@ -91,7 +137,14 @@ async function mainAsync(){
     isComputing=true;
     const time=performance.now()*0.001;
 
-    const duration=5;
+    if(ctx){
+      ctx.drawImage(webcamVideoElement!,0,0);
+      webcamCanvasTexture.needsUpdate=true;
+
+    }
+
+
+    const duration=10;
     const isCapturing = Math.floor(previousTime/duration) < Math.floor(time/duration);
 
     // cube.rotation.x += 0.01;
