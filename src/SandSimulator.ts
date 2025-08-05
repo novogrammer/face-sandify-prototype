@@ -195,7 +195,8 @@ export class SandSimulator{
           cellNext.assign(Cell({
             kind:KIND_SAND,
             // luminance:float(sin(uv.mul(360*10).radians()).length()),
-            luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
+            // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
+            luminance:texture(this.webcamTexture,uvWebcam).r,
             ttl:TTL,
           }));
         });
@@ -213,7 +214,8 @@ export class SandSimulator{
               kind:KIND_WALL,
               // luminance:float(sin(uv.mul(360*10).radians()).length()),
               // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
-              luminance:float(1.0),
+              // luminance:float(1.0),
+              luminance:texture(this.webcamTexture,uvWebcam).r,
             }));
           });
 
