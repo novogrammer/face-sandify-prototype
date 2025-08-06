@@ -1,5 +1,5 @@
 import Stats from "stats-gl";
-import { ENABLE_FORCE_WEBGL, SAND_SIMULATOR_WIDTH, SAND_SIMULATOR_HEIGHT } from './constants';
+import { ENABLE_FORCE_WEBGL, SAND_SIMULATOR_WIDTH, SAND_SIMULATOR_HEIGHT, ITERATION_PER_SEC, ITERATION_PER_STEP_MAX, CAPTURE_CYCLE_DURATION } from './constants';
 import { getElementSize } from './dom_utils';
 import { SandSimulator } from './SandSimulator';
 import './style.scss'
@@ -142,15 +142,29 @@ async function mainAsync(){
       webcamCanvasTexture.needsUpdate=true;
 
     }
+    const deltaTime = time - previousTime;
 
 
-    const duration=5;
+    const duration=CAPTURE_CYCLE_DURATION;
     const isCapturing = Math.floor(previousTime/duration) < Math.floor(time/duration);
 
     // cube.rotation.x += 0.01;
     // cube.rotation.y += 0.01;
 
-    await sandSimulator.updateFrameAsync(renderer,isCapturing);
+    const iterationPerFrame=Math.min(
+      ITERATION_PER_STEP_MAX,
+      Math.max(1,
+        Math.round(ITERATION_PER_SEC * deltaTime)
+      )
+    );
+    for(let i=0;i<iterationPerFrame;i++){
+      if(i==0){
+        sandSimulator.uDeltaTime.value=deltaTime;
+      }else{
+        sandSimulator.uDeltaTime.value=0;
+      }
+      await sandSimulator.updateFrameAsync(renderer,isCapturing);
+    }
     renderer.resolveTimestampsAsync( THREE.TimestampQuery.COMPUTE );
     material.colorNode=sandSimulator.getColorNode();
 

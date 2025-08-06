@@ -1,13 +1,12 @@
-import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, uvec2, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length, deltaTime } from 'three/tsl';
+import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, uvec2, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length } from 'three/tsl';
 import * as THREE from 'three/webgpu';
-import { SHOW_WGSL_CODE } from './constants';
+import { SAND_TTL, SHOW_WGSL_CODE } from './constants';
 // 
 
 
 const KIND_AIR=int(0);
 const KIND_SAND=int(1);
 const KIND_WALL=int(2);
-const TTL=float(25);
 const CAPTURE_POINT=vec2(0.5,0.75);
 const CAPTURE_RADIUS=float(0.2)
 
@@ -73,6 +72,7 @@ export class SandSimulator{
 
   uIsCapturing:ShaderNodeObject<THREE.UniformNode<number>>;
   uWebcamTextureSize:ShaderNodeObject<THREE.UniformNode<THREE.Vector2>>;
+  uDeltaTime:ShaderNodeObject<THREE.UniformNode<number>>;
 
   computeNodePing:ShaderNodeObject<THREE.ComputeNode>;
   computeNodePong:ShaderNodeObject<THREE.ComputeNode>;
@@ -105,6 +105,7 @@ export class SandSimulator{
 
     this.uIsCapturing=uniform(0);
     this.uWebcamTextureSize=uniform(webcamTextureSize);
+    this.uDeltaTime=uniform(0);
     
     
     // コンピュートシェーダーの定義  
@@ -197,7 +198,7 @@ export class SandSimulator{
             // luminance:float(sin(uv.mul(360*10).radians()).length()),
             // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
             luminance:texture(this.webcamTexture,uvWebcam).r,
-            ttl:TTL,
+            ttl:float(SAND_TTL),
           }));
         });
 
@@ -223,7 +224,7 @@ export class SandSimulator{
 
       });
       If(cellNext.get("kind").equal(KIND_SAND),()=>{
-        const ttl=cellNext.get("ttl").sub(deltaTime);
+        const ttl=cellNext.get("ttl").sub(this.uDeltaTime);
         If(ttl.greaterThan(0),()=>{
           cellNext.get("ttl").assign(ttl);
         }).Else(()=>{
