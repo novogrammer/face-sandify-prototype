@@ -152,7 +152,7 @@ export class SandSimulator{
       const cellSecondSideDown = cellNeighborList.element(int(1 * 3 + 0)).toVar("cellSecondSideDown");
 
       const cellNext = Cell().toVar("cellNext");
-      const cellAir=Cell(KIND_AIR,float(0)).toVar("cellAir");
+      const cellAir=Cell({ kind:KIND_AIR, luminance:float(0), ttl:float(0) }).toVar("cellAir");
 
       cellNext.assign(cellSelf);
 
@@ -217,6 +217,7 @@ export class SandSimulator{
               // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
               // luminance:float(1.0),
               luminance:texture(this.webcamTexture,uvWebcam).r,
+              ttl:float(0),
             }));
           });
 
