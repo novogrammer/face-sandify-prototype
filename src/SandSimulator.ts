@@ -1,4 +1,4 @@
-import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length } from 'three/tsl';
+import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length, min } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 import { SAND_TTL, SHOW_WGSL_CODE } from './constants';
 // 
@@ -204,24 +204,21 @@ export class SandSimulator{
           }));
         });
 
-        const distanceList=array([
+        const distance=min(
           distPointSegment(uv,vec2(0.0,0.95),vec2(0.3,0.9)),
           distPointSegment(uv,vec2(1.0,0.95),vec2(0.7,0.9)),
           distPointSegment(uv,vec2(0.2,0.05),vec2(0.8,0.05)),
-        ]);
+        );
 
-          Loop(3, ({ i }: { i: number }) => {
-            const distance = distanceList.element(int(i)).toVar();
-            If(distance.lessThanEqual(float(3).div(width)),()=>{
-              cellNext.assign(Cell({
-                kind:KIND_WALL,
-                // luminance:float(sin(uv.mul(360*10).radians()).length()),
-                // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
-              // luminance:float(1.0),
-              luminance:texture(this.webcamTexture,uvWebcam).r,
-              ttl:float(0),
-            }));
-          });
+        If(distance.lessThanEqual(float(3).div(width)),()=>{
+          cellNext.assign(Cell({
+            kind:KIND_WALL,
+            // luminance:float(sin(uv.mul(360*10).radians()).length()),
+            // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
+          // luminance:float(1.0),
+          luminance:texture(this.webcamTexture,uvWebcam).r,
+          ttl:float(0),
+        }));
 
         });
 
