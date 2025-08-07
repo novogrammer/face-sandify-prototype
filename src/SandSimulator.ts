@@ -7,8 +7,8 @@ import { SAND_TTL, SHOW_WGSL_CODE } from './constants';
 const KIND_AIR=int(0);
 const KIND_SAND=int(1);
 const KIND_WALL=int(2);
-const CAPTURE_POINT=vec2(0.5,0.75);
-const CAPTURE_RADIUS=float(0.2);
+const CAPTURE_POINT=vec2(0.5,0.7);
+const CAPTURE_RADIUS=float(0.25);
 
 // Cell構造体の定義
 const Cell = struct({
