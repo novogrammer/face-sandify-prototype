@@ -195,13 +195,15 @@ export class SandSimulator{
         //   luminance:float(0),
         // }));
         If(uv.sub(CAPTURE_POINT).length().lessThanEqual(CAPTURE_RADIUS),()=>{
-          cellNext.assign(Cell({
-            kind:KIND_SAND,
-            // luminance:float(sin(uv.mul(360*10).radians()).length()),
-            // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
-            luminance:texture(this.webcamTexture,uvWebcam).r,
-            ttl:float(SAND_TTL),
-          }));
+          If(int(coord.x).mod(int(2)).add(int(coord.y).mod(int(2))).equal(int(0)),()=>{
+            cellNext.assign(Cell({
+              kind:KIND_SAND,
+              // luminance:float(sin(uv.mul(360*10).radians()).length()),
+              // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
+              luminance:texture(this.webcamTexture,uvWebcam).r,
+              ttl:float(SAND_TTL),
+            }));
+          });
         });
 
         const distance=min(
