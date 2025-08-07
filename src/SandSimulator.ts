@@ -107,19 +107,7 @@ export class SandSimulator{
     this.uWebcamTextureSize=uniform(webcamTextureSize);
     this.uDeltaTime=uniform(0);
 
-
-    // コンピュートシェーダーの定義
-    const computeShader = Fn(([inputTexture, outputTexture]:[THREE.StorageTexture,THREE.StorageTexture]) => {
-      const coord = uvec2(instanceIndex.mod(width), instanceIndex.div(width)).toVar("coord");
-      // UV座標を手動で計算
-      const uv = vec2(coord).div(vec2(width, height)).toVar("uv");
-      const uvWebcam=uv.sub(0.5).mul(this.uWebcamTextureSize.yy).div(this.uWebcamTextureSize.xy).add(0.5).toVar("uvWebcam");
-
-      const useLeftPriority = frameId.mod(2).equal(int(0)).toVar("useLeftPriority");
-      const useLeftFactor = vec2(select(useLeftPriority , 1.0 , -1.0), 1.0).toVar("useLeftFactor");
-
-
-      // 前フレームのデータを読み込み
+    const readNeighbors = Fn(([coord, inputTexture, useLeftFactor]: [ReturnType<typeof uvec2>, THREE.StorageTexture, ReturnType<typeof vec2>]) => {
       const offsets = array([
         vec2(-1, -1), vec2(0, -1), vec2(1, -1),
         vec2(-1, 0),  vec2(0, 0),  vec2(1, 0),
@@ -137,6 +125,23 @@ export class SandSimulator{
         const cell = unpackCell(textureLoad(inputTexture, uvNeighbor)).toVar("cell");
         cellNeighborList.element(int(i)).assign(cell);
       });
+
+      return cellNeighborList;
+    });
+
+
+    // コンピュートシェーダーの定義
+    const computeShader = Fn(([inputTexture, outputTexture]:[THREE.StorageTexture,THREE.StorageTexture]) => {
+      const coord = uvec2(instanceIndex.mod(width), instanceIndex.div(width)).toVar("coord");
+      // UV座標を手動で計算
+      const uv = vec2(coord).div(vec2(width, height)).toVar("uv");
+      const uvWebcam=uv.sub(0.5).mul(this.uWebcamTextureSize.yy).div(this.uWebcamTextureSize.xy).add(0.5).toVar("uvWebcam");
+
+      const useLeftPriority = frameId.mod(2).equal(int(0)).toVar("useLeftPriority");
+      const useLeftFactor = vec2(select(useLeftPriority , 1.0 , -1.0), 1.0).toVar("useLeftFactor");
+
+
+      const cellNeighborList = readNeighbors(coord, inputTexture, useLeftFactor).toVar("cellNeighborList");
 
       const cellSelf = cellNeighborList.element(int(1 * 3 + 1)).toVar("cellSelf");
 
