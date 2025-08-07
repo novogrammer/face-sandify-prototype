@@ -107,7 +107,16 @@ export class SandSimulator{
     this.uWebcamTextureSize=uniform(webcamTextureSize);
     this.uDeltaTime=uniform(0);
 
-    const readNeighbors = Fn(([coord, inputTexture, useLeftFactor]: [ReturnType<typeof uvec2>, THREE.StorageTexture, ReturnType<typeof vec2>]) => {
+    // コンピュートシェーダーの定義
+    const computeShader = Fn(([inputTexture, outputTexture]:[THREE.StorageTexture,THREE.StorageTexture]) => {
+      const coord = uvec2(instanceIndex.mod(width), instanceIndex.div(width)).toVar("coord");
+      // UV座標を手動で計算
+      const uv = vec2(coord).div(vec2(width, height)).toVar("uv");
+      const uvWebcam=uv.sub(0.5).mul(this.uWebcamTextureSize.yy).div(this.uWebcamTextureSize.xy).add(0.5).toVar("uvWebcam");
+
+      const useLeftPriority = frameId.mod(2).equal(int(0)).toVar("useLeftPriority");
+      const useLeftFactor = vec2(select(useLeftPriority , 1.0 , -1.0), 1.0).toVar("useLeftFactor");
+
       const offsets = array([
         vec2(-1, -1), vec2(0, -1), vec2(1, -1),
         vec2(-1, 0),  vec2(0, 0),  vec2(1, 0),
@@ -125,23 +134,6 @@ export class SandSimulator{
         const cell = unpackCell(textureLoad(inputTexture, uvNeighbor)).toVar("cell");
         cellNeighborList.element(int(i)).assign(cell);
       });
-
-      return cellNeighborList;
-    });
-
-
-    // コンピュートシェーダーの定義
-    const computeShader = Fn(([inputTexture, outputTexture]:[THREE.StorageTexture,THREE.StorageTexture]) => {
-      const coord = uvec2(instanceIndex.mod(width), instanceIndex.div(width)).toVar("coord");
-      // UV座標を手動で計算
-      const uv = vec2(coord).div(vec2(width, height)).toVar("uv");
-      const uvWebcam=uv.sub(0.5).mul(this.uWebcamTextureSize.yy).div(this.uWebcamTextureSize.xy).add(0.5).toVar("uvWebcam");
-
-      const useLeftPriority = frameId.mod(2).equal(int(0)).toVar("useLeftPriority");
-      const useLeftFactor = vec2(select(useLeftPriority , 1.0 , -1.0), 1.0).toVar("useLeftFactor");
-
-
-      const cellNeighborList = readNeighbors(coord, inputTexture, useLeftFactor).toVar("cellNeighborList");
 
       const cellSelf = cellNeighborList.element(int(1 * 3 + 1)).toVar("cellSelf");
 
@@ -218,13 +210,13 @@ export class SandSimulator{
           distPointSegment(uv,vec2(0.2,0.05),vec2(0.8,0.05)),
         ]);
 
-        Loop(3,({i})=>{
-          const distance=distanceList.element(int(i)).toVar();
-          If(distance.lessThanEqual(float(3).div(width)),()=>{
-            cellNext.assign(Cell({
-              kind:KIND_WALL,
-              // luminance:float(sin(uv.mul(360*10).radians()).length()),
-              // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
+          Loop(3, ({ i }: { i: number }) => {
+            const distance = distanceList.element(int(i)).toVar();
+            If(distance.lessThanEqual(float(3).div(width)),()=>{
+              cellNext.assign(Cell({
+                kind:KIND_WALL,
+                // luminance:float(sin(uv.mul(360*10).radians()).length()),
+                // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
               // luminance:float(1.0),
               luminance:texture(this.webcamTexture,uvWebcam).r,
               ttl:float(0),
