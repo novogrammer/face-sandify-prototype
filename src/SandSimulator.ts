@@ -1,4 +1,4 @@
-import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, uvec2, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length } from 'three/tsl';
+import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 import { SAND_TTL, SHOW_WGSL_CODE } from './constants';
 // 
@@ -109,7 +109,7 @@ export class SandSimulator{
 
     // コンピュートシェーダーの定義
     const computeShader = Fn(([inputTexture, outputTexture]:[THREE.StorageTexture,THREE.StorageTexture]) => {
-      const coord = uvec2(instanceIndex.mod(width), instanceIndex.div(width)).toVar("coord");
+      const coord = vec2(instanceIndex.mod(width), instanceIndex.div(width)).toVar("coord");
       // UV座標を手動で計算
       const uv = vec2(coord).div(vec2(width, height)).toVar("uv");
       const uvWebcam=uv.sub(0.5).mul(this.uWebcamTextureSize.yy).div(this.uWebcamTextureSize.xy).add(0.5).toVar("uvWebcam");
@@ -130,7 +130,7 @@ export class SandSimulator{
 
       Loop(9, ({ i }: { i: number }) => {
         const offset = vec2(offsets.element(int(i)).mul(useLeftFactor)).toVar("offset");
-        const uvNeighbor = uvec2(vec2(coord).add(offset).mod(vec2(width, height))).toVar("uvNeighbor");
+        const uvNeighbor = coord.add(offset).mod(vec2(width, height)).toVar("uvNeighbor");
         const cell = unpackCell(textureLoad(inputTexture, uvNeighbor)).toVar("cell");
         cellNeighborList.element(int(i)).assign(cell);
       });
