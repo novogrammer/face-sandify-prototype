@@ -132,7 +132,7 @@ export class SandSimulator{
         const offset = uvec2(x,y).mul(useLeftFactor).toVar("offset");
         const uvNeighbor = coord.add(offset).mod((uvec2(width,height))).toVar("uvNeighbor");
 
-        const cell = unpackCell(textureLoad(inputTexture, uvNeighbor)).toVar("cell");
+        const cell = unpackCell(textureLoad(inputTexture, uvNeighbor, int(0))).toVar("cell");
 
         cellNeighborList.element(index).assign(cell)
       });
