@@ -106,9 +106,8 @@ export class SandSimulator{
     this.uIsCapturing=uniform(0);
     this.uWebcamTextureSize=uniform(webcamTextureSize);
     this.uDeltaTime=uniform(0);
-    
-    
-    // コンピュートシェーダーの定義  
+
+    // コンピュートシェーダーの定義
     const computeShader = Fn(([inputTexture, outputTexture]:[THREE.StorageTexture,THREE.StorageTexture]) => {
       const coord = uvec2(instanceIndex.mod(width), instanceIndex.div(width)).toVar("coord");
       // UV座標を手動で計算
@@ -118,25 +117,24 @@ export class SandSimulator{
       const useLeftPriority = frameId.mod(2).equal(int(0)).toVar("useLeftPriority");
       const useLeftFactor = vec2(select(useLeftPriority , 1.0 , -1.0), 1.0).toVar("useLeftFactor");
 
-
-      // 前フレームのデータを読み込み  
+      const offsets = array([
+        vec2(-1, -1), vec2(0, -1), vec2(1, -1),
+        vec2(-1, 0),  vec2(0, 0),  vec2(1, 0),
+        vec2(-1, 1),  vec2(0, 1),  vec2(1, 1),
+      ]).toVar("offsets");
       const cellNeighborList = array([
         Cell(), Cell(), Cell(),
         Cell(), Cell(), Cell(),
         Cell(), Cell(), Cell(),
       ]).toVar("cellNeighborList");
-      Loop(3,3,({i,j})=>{
-        const index = int(j).mul(3).add(i).toVar("index");
-        const x=int(i).sub(1).toVar("x");
-        const y=int(j).sub(1).toVar("y");
-        const offset = uvec2(x,y).mul(useLeftFactor).toVar("offset");
-        const uvNeighbor = coord.add(offset).mod((uvec2(width,height))).toVar("uvNeighbor");
 
+      Loop(9, ({ i }: { i: number }) => {
+        const offset = vec2(offsets.element(int(i)).mul(useLeftFactor)).toVar("offset");
+        const uvNeighbor = uvec2(vec2(coord).add(offset).mod(vec2(width, height))).toVar("uvNeighbor");
         const cell = unpackCell(textureLoad(inputTexture, uvNeighbor)).toVar("cell");
-
-        cellNeighborList.element(index).assign(cell)
+        cellNeighborList.element(int(i)).assign(cell);
       });
-      
+
       const cellSelf = cellNeighborList.element(int(1 * 3 + 1)).toVar("cellSelf");
 
       const cellUp = cellNeighborList.element(int(2 * 3 + 1)).toVar("cellUp");
@@ -212,13 +210,13 @@ export class SandSimulator{
           distPointSegment(uv,vec2(0.2,0.05),vec2(0.8,0.05)),
         ]);
 
-        Loop(3,({i})=>{
-          const distance=distanceList.element(int(i)).toVar();
-          If(distance.lessThanEqual(float(3).div(width)),()=>{
-            cellNext.assign(Cell({
-              kind:KIND_WALL,
-              // luminance:float(sin(uv.mul(360*10).radians()).length()),
-              // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
+          Loop(3, ({ i }: { i: number }) => {
+            const distance = distanceList.element(int(i)).toVar();
+            If(distance.lessThanEqual(float(3).div(width)),()=>{
+              cellNext.assign(Cell({
+                kind:KIND_WALL,
+                // luminance:float(sin(uv.mul(360*10).radians()).length()),
+                // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
               // luminance:float(1.0),
               luminance:texture(this.webcamTexture,uvWebcam).r,
               ttl:float(0),
