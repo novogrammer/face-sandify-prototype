@@ -160,10 +160,11 @@ async function mainAsync(){
     for(let i=0;i<iterationPerFrame;i++){
       if(i==0){
         sandSimulator.uDeltaTime.value=deltaTime;
+        await sandSimulator.updateFrameAsync(renderer,isCapturing);
       }else{
         sandSimulator.uDeltaTime.value=0;
+        await sandSimulator.updateFrameAsync(renderer,false);
       }
-      await sandSimulator.updateFrameAsync(renderer,isCapturing);
     }
     renderer.resolveTimestampsAsync( THREE.TimestampQuery.COMPUTE );
     material.colorNode=sandSimulator.getColorNode();
