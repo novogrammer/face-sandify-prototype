@@ -208,8 +208,8 @@ export class SandSimulator{
         });
 
         const distance=min(
-          distPointSegment(uv,vec2(0.4,0.93),vec2(0.5,0.98)),
-          distPointSegment(uv,vec2(0.6,0.93),vec2(0.5,0.98)),
+          distPointSegment(uv,vec2(0.3,0.93),vec2(0.5,0.98)),
+          distPointSegment(uv,vec2(0.7,0.93),vec2(0.5,0.98)),
           distPointSegment(uv,vec2(0.3,0.15),vec2(0.45,0.1)),
           distPointSegment(uv,vec2(0.7,0.15),vec2(0.55,0.1)),
           distPointSegment(uv,vec2(0.3,0.15),vec2(0.15,0.1)),
