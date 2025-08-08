@@ -1,12 +1,14 @@
-import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length, min, hash } from 'three/tsl';
+import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length, min, hash, not } from 'three/tsl';
 import * as THREE from 'three/webgpu';
-import { SAND_SPACING, SAND_TTL_MAX, SAND_TTL_MIN, SHOW_WGSL_CODE } from './constants';
+import { IGNORE_SAND_TTL, SAND_SPACING, SAND_TTL_MAX, SAND_TTL_MIN, SHOW_WGSL_CODE } from './constants';
 // 
 
 
 const KIND_AIR=int(0);
 const KIND_SAND=int(1);
 const KIND_WALL=int(2);
+const KIND_SINK=int(3);
+
 const CAPTURE_POINT=vec2(0.5,0.65);
 const CAPTURE_RADIUS=float(0.25);
 
@@ -48,6 +50,8 @@ const toColor = Fn(([cell]:[ReturnType<typeof Cell>])=>{
     rgb.assign(mix(vec3(0.0,0.0,0.5),vec3(0.0,1.0,1.0),luminance));
   }).ElseIf(cell.get("kind").equal(KIND_SAND),()=>{
     rgb.assign(mix(vec3(0.75,0.0,0.0),vec3(1.0,0.75,0.0),luminance));
+  }).ElseIf(cell.get("kind").equal(KIND_SINK),()=>{
+    rgb.assign(mix(vec3(0.75,0.0,0.0),vec3(1.0,0.0,0.0),luminance));
   }).Else(()=>{
     rgb.assign(vec3(0.0));
   })
@@ -90,7 +94,8 @@ export class SandSimulator{
 
     const makeTexture=()=>{
       const texture=new THREE.StorageTexture(width, height);
-      texture.type=THREE.HalfFloatType;
+      // texture.type=THREE.HalfFloatType;
+      texture.type=THREE.FloatType;
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
       texture.minFilter = THREE.NearestFilter;
@@ -158,14 +163,18 @@ export class SandSimulator{
 
       cellNext.assign(cellSelf);
 
-      If(cellSelf.get("kind").equal(KIND_AIR),()=>{
+      const isAirLikeCell=Fn(([cell]:[ReturnType<typeof Cell>])=>{
+        return bool(cell.get("kind").equal(KIND_AIR)).or(bool(cell.get("kind").equal(KIND_SINK)));
+      });
+
+      If(isAirLikeCell(cellSelf),()=>{
         // watch up
 
         If(cellUp.get("kind").equal(KIND_SAND),()=>{
           cellNext.assign(cellUp);
-        }).ElseIf(bool(cellFirstDiagonalUp.get("kind").equal(KIND_SAND)).and(bool(cellFirstSideUp.get("kind").notEqual(KIND_AIR))),()=>{
+        }).ElseIf(bool(cellFirstDiagonalUp.get("kind").equal(KIND_SAND)).and(not(isAirLikeCell(cellFirstSideUp))),()=>{
           cellNext.assign(cellFirstDiagonalUp);
-        }).ElseIf(bool(cellSecondDiagonalUp.get("kind").equal(KIND_SAND)).and(bool(cellSecondSideUp.get("kind").notEqual(KIND_AIR))),()=>{
+        }).ElseIf(bool(cellSecondDiagonalUp.get("kind").equal(KIND_SAND)).and(not(isAirLikeCell(cellSecondSideUp))),()=>{
           cellNext.assign(cellSecondDiagonalUp);
         }).Else(()=>{
           // DO NOTHING
@@ -174,11 +183,11 @@ export class SandSimulator{
       }).ElseIf(cellSelf.get("kind").equal(KIND_SAND), ()=>{
         // watch down
 
-        If(cellDown.get("kind").equal(KIND_AIR),()=>{
+        If(isAirLikeCell(cellDown),()=>{
           cellNext.assign(cellAir);
-        }).ElseIf(bool(cellFirstDiagonalDown.get("kind").equal(KIND_AIR)).and(bool(cellFirstSideDown.get("kind").equal(KIND_AIR))),()=>{
+        }).ElseIf(isAirLikeCell(cellFirstDiagonalDown).and(isAirLikeCell(cellFirstSideDown)),()=>{
           cellNext.assign(cellAir);
-        }).ElseIf(bool(cellSecondDiagonalDown.get("kind").equal(KIND_AIR)).and(bool(cellSecondSideDown.get("kind").equal(KIND_AIR))),()=>{
+        }).ElseIf(isAirLikeCell(cellSecondDiagonalDown).and(isAirLikeCell(cellSecondSideDown)),()=>{
           cellNext.assign(cellAir);
         }).Else(()=>{
           // DO NOTHING
@@ -196,7 +205,7 @@ export class SandSimulator{
         // }));
         If(uv.sub(CAPTURE_POINT).length().lessThanEqual(CAPTURE_RADIUS),()=>{
           If(int(coord.x).mod(int(SAND_SPACING)).add(int(coord.y).mod(int(SAND_SPACING))).equal(int(0)),()=>{
-            const ttl=mix(float(SAND_TTL_MIN),float(SAND_TTL_MAX),hash(uv.mul(10000)));
+            const ttl=mix(float(SAND_TTL_MIN),float(SAND_TTL_MAX),hash(uv.mul(100)));
             cellNext.assign(Cell({
               kind:KIND_SAND,
               // luminance:float(sin(uv.mul(360*10).radians()).length()),
@@ -207,36 +216,60 @@ export class SandSimulator{
           });
         });
 
-        const distance=min(
-          distPointSegment(uv,vec2(0.3,0.93),vec2(0.5,0.98)),
-          distPointSegment(uv,vec2(0.7,0.93),vec2(0.5,0.98)),
-          distPointSegment(uv,vec2(0.3,0.15),vec2(0.45,0.1)),
-          distPointSegment(uv,vec2(0.7,0.15),vec2(0.55,0.1)),
-          distPointSegment(uv,vec2(0.3,0.15),vec2(0.15,0.1)),
-          distPointSegment(uv,vec2(0.7,0.15),vec2(0.85,0.1)),
-        );
+        {
+          const distance=min(
+            distPointSegment(uv,vec2(0.3,0.90),vec2(0.5,0.95)),
+            distPointSegment(uv,vec2(0.7,0.90),vec2(0.5,0.95)),
+            distPointSegment(uv,vec2(0.3,0.15),vec2(0.45,0.1)),
+            distPointSegment(uv,vec2(0.7,0.15),vec2(0.55,0.1)),
+            distPointSegment(uv,vec2(0.3,0.15),vec2(0.15,0.1)),
+            distPointSegment(uv,vec2(0.7,0.15),vec2(0.85,0.1)),
+          );
 
-        If(distance.lessThanEqual(float(3).div(width)),()=>{
-          cellNext.assign(Cell({
-            kind:KIND_WALL,
-            // luminance:float(sin(uv.mul(360*10).radians()).length()),
-            // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
-          // luminance:float(1.0),
-          luminance:texture(this.webcamTexture,uvWebcam).r,
-          ttl:float(0),
-        }));
+          If(distance.lessThanEqual(float(3).div(width)),()=>{
+            cellNext.assign(Cell({
+              kind:KIND_WALL,
+              // luminance:float(sin(uv.mul(360*10).radians()).length()),
+              // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
+            // luminance:float(1.0),
+            luminance:texture(this.webcamTexture,uvWebcam).r,
+              ttl:float(0),
+            }));
+          });
 
-        });
+        }
+        {
+          const distance=min(
+            distPointSegment(uv,vec2(0.15,0.5),vec2(0,0.5)),
+            distPointSegment(uv,vec2(0.85,0.5),vec2(1,0.5)),
+          );
+
+          If(distance.lessThanEqual(float(3).div(width)),()=>{
+            cellNext.assign(Cell({
+              kind:KIND_SINK,
+              // luminance:float(sin(uv.mul(360*10).radians()).length()),
+              // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
+            // luminance:float(1.0),
+            luminance:texture(this.webcamTexture,uvWebcam).r,
+              ttl:float(0),
+            }));
+          });
+          
+        }
 
       });
       If(cellNext.get("kind").equal(KIND_SAND),()=>{
-        const ttl=cellNext.get("ttl").sub(this.uDeltaTime);
-        If(ttl.greaterThan(0),()=>{
-          cellNext.get("ttl").assign(ttl);
+        If(cellSelf.get("kind").equal(KIND_SINK),()=>{
+          // SINKで上書きすることで砂を消す
+          cellNext.assign(cellSelf);
         }).Else(()=>{
-          cellNext.assign(cellAir);
+          const ttl=cellNext.get("ttl").sub(IGNORE_SAND_TTL?0:this.uDeltaTime);
+          If(ttl.greaterThan(0),()=>{
+            cellNext.get("ttl").assign(ttl);
+          }).Else(()=>{
+            cellNext.assign(cellAir);
+          });
         });
-        
       });
 
       const cellColorNext=packCell(cellNext).toVar("cellColorNext");

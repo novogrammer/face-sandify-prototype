@@ -10,5 +10,6 @@ export const ITERATION_PER_STEP_MAX=100;
 export const CAPTURE_CYCLE_DURATION=5;
 export const SAND_TTL_MIN=100;
 export const SAND_TTL_MAX=200;
+export const IGNORE_SAND_TTL=true;
 export const SAND_SPACING=4;
 
