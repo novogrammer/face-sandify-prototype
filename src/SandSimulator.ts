@@ -1,6 +1,6 @@
-import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length, min } from 'three/tsl';
+import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length, min, hash } from 'three/tsl';
 import * as THREE from 'three/webgpu';
-import { SAND_TTL, SHOW_WGSL_CODE } from './constants';
+import { SAND_TTL_MAX, SAND_TTL_MIN, SHOW_WGSL_CODE } from './constants';
 // 
 
 
@@ -196,12 +196,13 @@ export class SandSimulator{
         // }));
         If(uv.sub(CAPTURE_POINT).length().lessThanEqual(CAPTURE_RADIUS),()=>{
           If(int(coord.x).mod(int(2)).add(int(coord.y).mod(int(2))).equal(int(0)),()=>{
+            const ttl=mix(float(SAND_TTL_MIN),float(SAND_TTL_MAX),hash(uv.mul(10000)));
             cellNext.assign(Cell({
               kind:KIND_SAND,
               // luminance:float(sin(uv.mul(360*10).radians()).length()),
               // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
               luminance:texture(this.webcamTexture,uvWebcam).r,
-              ttl:float(SAND_TTL),
+              ttl:ttl,
             }));
           });
         });
