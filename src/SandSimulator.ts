@@ -7,7 +7,7 @@ import { SAND_TTL, SHOW_WGSL_CODE } from './constants';
 const KIND_AIR=int(0);
 const KIND_SAND=int(1);
 const KIND_WALL=int(2);
-const CAPTURE_POINT=vec2(0.5,0.7);
+const CAPTURE_POINT=vec2(0.5,0.65);
 const CAPTURE_RADIUS=float(0.25);
 
 // Cell構造体の定義
@@ -207,9 +207,10 @@ export class SandSimulator{
         });
 
         const distance=min(
-          distPointSegment(uv,vec2(0.0,0.95),vec2(0.3,0.9)),
-          distPointSegment(uv,vec2(1.0,0.95),vec2(0.7,0.9)),
-          distPointSegment(uv,vec2(0.2,0.05),vec2(0.8,0.05)),
+          distPointSegment(uv,vec2(0.4,0.93),vec2(0.5,0.98)),
+          distPointSegment(uv,vec2(0.6,0.93),vec2(0.5,0.98)),
+          distPointSegment(uv,vec2(0.0,0.2),vec2(0.45,0.1)),
+          distPointSegment(uv,vec2(1.0,0.2),vec2(0.55,0.1)),
         );
 
         If(distance.lessThanEqual(float(3).div(width)),()=>{
