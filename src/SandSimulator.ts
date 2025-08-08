@@ -209,8 +209,10 @@ export class SandSimulator{
         const distance=min(
           distPointSegment(uv,vec2(0.4,0.93),vec2(0.5,0.98)),
           distPointSegment(uv,vec2(0.6,0.93),vec2(0.5,0.98)),
-          distPointSegment(uv,vec2(0.0,0.2),vec2(0.45,0.1)),
-          distPointSegment(uv,vec2(1.0,0.2),vec2(0.55,0.1)),
+          distPointSegment(uv,vec2(0.3,0.15),vec2(0.45,0.1)),
+          distPointSegment(uv,vec2(0.7,0.15),vec2(0.55,0.1)),
+          distPointSegment(uv,vec2(0.3,0.15),vec2(0.15,0.1)),
+          distPointSegment(uv,vec2(0.7,0.15),vec2(0.85,0.1)),
         );
 
         If(distance.lessThanEqual(float(3).div(width)),()=>{
