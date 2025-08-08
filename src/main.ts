@@ -138,7 +138,11 @@ async function mainAsync(){
     const time=performance.now()*0.001;
 
     if(ctx){
-      ctx.drawImage(webcamVideoElement!,0,0);
+      ctx.save();
+      ctx.translate(canvasElement.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(webcamVideoElement!, 0, 0);
+      ctx.restore();
       webcamCanvasTexture.needsUpdate=true;
 
     }
