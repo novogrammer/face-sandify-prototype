@@ -8,6 +8,7 @@ export const ITERATION_PER_SEC=60*4;
 
 export const ITERATION_PER_STEP_MAX=100;
 export const CAPTURE_CYCLE_DURATION=5;
-export const SAND_TTL_MIN=20;
-export const SAND_TTL_MAX=30;
+export const SAND_TTL_MIN=100;
+export const SAND_TTL_MAX=200;
+export const SAND_SPACING=4;
 

@@ -1,6 +1,6 @@
 import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length, min, hash } from 'three/tsl';
 import * as THREE from 'three/webgpu';
-import { SAND_TTL_MAX, SAND_TTL_MIN, SHOW_WGSL_CODE } from './constants';
+import { SAND_SPACING, SAND_TTL_MAX, SAND_TTL_MIN, SHOW_WGSL_CODE } from './constants';
 // 
 
 
@@ -195,7 +195,7 @@ export class SandSimulator{
         //   luminance:float(0),
         // }));
         If(uv.sub(CAPTURE_POINT).length().lessThanEqual(CAPTURE_RADIUS),()=>{
-          If(int(coord.x).mod(int(2)).add(int(coord.y).mod(int(2))).equal(int(0)),()=>{
+          If(int(coord.x).mod(int(SAND_SPACING)).add(int(coord.y).mod(int(SAND_SPACING))).equal(int(0)),()=>{
             const ttl=mix(float(SAND_TTL_MIN),float(SAND_TTL_MAX),hash(uv.mul(10000)));
             cellNext.assign(Cell({
               kind:KIND_SAND,
