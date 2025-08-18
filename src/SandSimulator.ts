@@ -22,6 +22,7 @@ const Cell = struct({
 // unpackCell関数  
 const unpackCell = Fn(([color]:[ReturnType<typeof vec4>]) => {  
   const cell = Cell({
+    // @ts-ignore
     kind:int(round(color.r.mul(255.0))),
     luminance:color.g,
     ttl:color.b,
@@ -32,8 +33,11 @@ const unpackCell = Fn(([color]:[ReturnType<typeof vec4>]) => {
 // packCell関数
 const packCell = Fn(([cell]:[ReturnType<typeof Cell>]) => {
   const color = vec4(
+    // @ts-ignore
     float(cell.get('kind')).div(255.0),
+    // @ts-ignore
     cell.get('luminance'),
+    // @ts-ignore
     cell.get('ttl'),
     1.0
   );
@@ -45,11 +49,15 @@ const packCell = Fn(([cell]:[ReturnType<typeof Cell>]) => {
 
 const toColor = Fn(([cell]:[ReturnType<typeof Cell>])=>{
   const rgb=vec3(1.0).toVar();
+  // @ts-ignore
   const luminance=cell.get("luminance").toVar();
+  // @ts-ignore
   If(cell.get("kind").equal(KIND_WALL),()=>{
     rgb.assign(mix(vec3(0.0,0.0,0.5),vec3(0.0,1.0,1.0),luminance));
+    // @ts-ignore
   }).ElseIf(cell.get("kind").equal(KIND_SAND),()=>{
     rgb.assign(mix(vec3(0.75,0.0,0.0),vec3(1.0,0.75,0.0),luminance));
+    // @ts-ignore
   }).ElseIf(cell.get("kind").equal(KIND_SINK),()=>{
     rgb.assign(mix(vec3(0.75,0.0,0.0),vec3(1.0,0.0,0.0),luminance));
   }).Else(()=>{
@@ -156,6 +164,7 @@ export class SandSimulator{
 
       const cellNext = Cell().toVar("cellNext");
       const cellAir = Cell({
+        // @ts-ignore
         kind:KIND_AIR,
         luminance:float(0),
         ttl:float(0),
@@ -164,22 +173,27 @@ export class SandSimulator{
       cellNext.assign(cellSelf);
 
       const isAirLikeCell=Fn(([cell]:[ReturnType<typeof Cell>])=>{
+        // @ts-ignore
         return bool(cell.get("kind").equal(KIND_AIR)).or(bool(cell.get("kind").equal(KIND_SINK)));
       });
 
       If(isAirLikeCell(cellSelf),()=>{
         // watch up
 
+        // @ts-ignore
         If(cellUp.get("kind").equal(KIND_SAND),()=>{
           cellNext.assign(cellUp);
+          // @ts-ignore
         }).ElseIf(bool(cellFirstDiagonalUp.get("kind").equal(KIND_SAND)).and(not(isAirLikeCell(cellFirstSideUp))),()=>{
           cellNext.assign(cellFirstDiagonalUp);
+          // @ts-ignore
         }).ElseIf(bool(cellSecondDiagonalUp.get("kind").equal(KIND_SAND)).and(not(isAirLikeCell(cellSecondSideUp))),()=>{
           cellNext.assign(cellSecondDiagonalUp);
         }).Else(()=>{
           // DO NOTHING
         });
 
+        // @ts-ignore
       }).ElseIf(cellSelf.get("kind").equal(KIND_SAND), ()=>{
         // watch down
 
@@ -207,6 +221,7 @@ export class SandSimulator{
           If(int(coord.x).mod(int(SAND_SPACING)).add(int(coord.y).mod(int(SAND_SPACING))).equal(int(0)),()=>{
             const ttl=mix(float(SAND_TTL_MIN),float(SAND_TTL_MAX),hash(uv.mul(100)));
             cellNext.assign(Cell({
+              // @ts-ignore
               kind:KIND_SAND,
               // luminance:float(sin(uv.mul(360*10).radians()).length()),
               // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
@@ -228,6 +243,7 @@ export class SandSimulator{
 
           If(distance.lessThanEqual(float(3).div(width)),()=>{
             cellNext.assign(Cell({
+              // @ts-ignore
               kind:KIND_WALL,
               // luminance:float(sin(uv.mul(360*10).radians()).length()),
               // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
@@ -246,6 +262,7 @@ export class SandSimulator{
 
           If(distance.lessThanEqual(float(3).div(width)),()=>{
             cellNext.assign(Cell({
+              // @ts-ignore
               kind:KIND_SINK,
               // luminance:float(sin(uv.mul(360*10).radians()).length()),
               // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
@@ -258,13 +275,17 @@ export class SandSimulator{
         }
 
       });
+      // @ts-ignore
       If(cellNext.get("kind").equal(KIND_SAND),()=>{
+        // @ts-ignore
         If(cellSelf.get("kind").equal(KIND_SINK),()=>{
           // SINKで上書きすることで砂を消す
           cellNext.assign(cellSelf);
         }).Else(()=>{
+          // @ts-ignore
           const ttl=cellNext.get("ttl").sub(IGNORE_SAND_TTL?0:this.uDeltaTime);
           If(ttl.greaterThan(0),()=>{
+            // @ts-ignore
             cellNext.get("ttl").assign(ttl);
           }).Else(()=>{
             cellNext.assign(cellAir);

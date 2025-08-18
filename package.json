@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "@types/three": "file:../three-ts-types/types/three",
+    "@types/three": "^0.179.0",
     "sass": "^1.89.2",
     "typescript": "~5.8.3",
     "vite": "^7.0.4"

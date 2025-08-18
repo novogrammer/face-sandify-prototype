@@ -17,11 +17,16 @@ export async function testStructAsync(renderer:WebGPURenderer){
   const cStorage = instancedArray( cArray, Complex ).label( 'cStorage' );
 
   const multiply = Fn(([a,b]:[a:ReturnType<typeof Complex>,b:ReturnType<typeof Complex>]):ReturnType<typeof Complex>=>{
+  // @ts-ignore
   const ar=a.get("real");
+  // @ts-ignore
   const ai=a.get("imaginary");
+  // @ts-ignore
   const br=b.get("real");
+  // @ts-ignore
   const bi=b.get("imaginary");
   return Complex({
+    // @ts-ignore
     real: ar.mul(br).sub(ai.mul(bi)),
     imaginary: ar.mul(bi).add(ai.mul(br))
   });
@@ -37,6 +42,7 @@ export async function testStructAsync(renderer:WebGPURenderer){
 
     const complexA = Complex(float(2),float(1));
     const complexB = Complex({
+      // @ts-ignore
       real:float(2),
       imaginary:float(-1),
     });

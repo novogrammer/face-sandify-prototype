@@ -8,9 +8,11 @@ export function testSimpleStructNode(material:NodeMaterial){
   })
   const simple=Fn(([a,b]:[ReturnType<typeof float>,ReturnType<typeof float>])=>{
     const s=S({
+      // @ts-ignore
       a,
       b,
     });
+    // @ts-ignore
     const result = s.get("a").add(s.get("b"));
     return result;
   })
