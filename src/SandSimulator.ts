@@ -338,12 +338,12 @@ export class SandSimulator{
     }else{
       computeNode=this.computeNodePong;
     }
-    await renderer.computeAsync(computeNode);  
 
     if(SHOW_WGSL_CODE){
       console.log((renderer as any)._nodes.getForCompute(computeNode).computeShader);
       debugger;
     }
+    await renderer.computeAsync(computeNode);  
 
       
 
