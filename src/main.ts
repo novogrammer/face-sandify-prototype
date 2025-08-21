@@ -36,6 +36,7 @@ async function mainAsync(){
   });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize( width, height );
+  await renderer.init();
   renderer.domElement.classList.add("p-background__canvas");
   backgroundElement.appendChild( renderer.domElement );
   const stats=new Stats({
