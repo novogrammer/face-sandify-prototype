@@ -174,7 +174,19 @@ export class SandSimulator{
 
       const isAirLikeCell=Fn(([cell]:[ReturnType<typeof Cell>])=>{
         // @ts-ignore
-        return bool(cell.get("kind").equal(KIND_AIR)).or(bool(cell.get("kind").equal(KIND_SINK)));
+        const isAir=bool(cell.get("kind").equal(KIND_AIR)).toVar("isAir");
+        // @ts-ignore
+        const isSink=bool(cell.get("kind").equal(KIND_SINK)).toVar("isSink");
+        return isAir.or(isSink);
+      }).setLayout({
+        name:"isAirLikeCell",
+        type:"bool",
+        inputs:[
+          {
+            name:"cell",
+            type:"Cell",
+          },
+        ],
       });
 
       If(isAirLikeCell(cellSelf),()=>{
