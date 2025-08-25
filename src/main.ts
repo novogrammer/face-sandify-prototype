@@ -138,20 +138,20 @@ async function mainAsync(){
     isComputing=true;
     const time=performance.now()*0.001;
 
-    if(ctx){
-      ctx.save();
-      ctx.translate(canvasElement.width, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(webcamVideoElement!, 0, 0);
-      ctx.restore();
-      webcamCanvasTexture.needsUpdate=true;
-
-    }
     const deltaTime = time - previousTime;
-
 
     const duration=CAPTURE_CYCLE_DURATION;
     const isCapturing = Math.floor(previousTime/duration) < Math.floor(time/duration);
+    if(isCapturing){
+      if(ctx){
+        ctx.save();
+        ctx.translate(canvasElement.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(webcamVideoElement!, 0, 0);
+        ctx.restore();
+        webcamCanvasTexture.needsUpdate=true;
+      }
+    }
 
     // cube.rotation.x += 0.01;
     // cube.rotation.y += 0.01;
