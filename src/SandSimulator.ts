@@ -86,6 +86,8 @@ export class SandSimulator{
   uIsCapturing:ShaderNodeObject<THREE.UniformNode<number>>;
   uWebcamTextureSize:ShaderNodeObject<THREE.UniformNode<THREE.Vector2>>;
   uDeltaTime:ShaderNodeObject<THREE.UniformNode<number>>;
+  uIsClearing:ShaderNodeObject<THREE.UniformNode<number>>;
+  uFieldIndex:ShaderNodeObject<THREE.UniformNode<number>>;
 
   computeNodePing:ShaderNodeObject<THREE.ComputeNode>;
   computeNodePong:ShaderNodeObject<THREE.ComputeNode>;
@@ -120,6 +122,8 @@ export class SandSimulator{
     this.uIsCapturing=uniform(0);
     this.uWebcamTextureSize=uniform(webcamTextureSize);
     this.uDeltaTime=uniform(0);
+    this.uIsClearing=uniform(0);
+    this.uFieldIndex=uniform(0);
 
     // コンピュートシェーダーの定義
     const computeShader = Fn(([inputTexture, outputTexture]:[THREE.StorageTexture,THREE.StorageTexture]) => {
@@ -226,69 +230,82 @@ export class SandSimulator{
       });
       
 
+      // クリア処理: 全て空気にしてからフィールドを適用
+      If(bool(this.uIsClearing),()=>{
+        cellNext.assign(cellAir);
+        If(int(this.uFieldIndex).equal(int(0)),()=>{
+          // フィールド0: 既存の斜めライン + 左右のシンク
+          {
+            const distance=min(
+              distPointSegment(uv,vec2(0.3,0.90),vec2(0.5,0.95)),
+              distPointSegment(uv,vec2(0.7,0.90),vec2(0.5,0.95)),
+              distPointSegment(uv,vec2(0.3,0.15),vec2(0.45,0.1)),
+              distPointSegment(uv,vec2(0.7,0.15),vec2(0.55,0.1)),
+              distPointSegment(uv,vec2(0.3,0.15),vec2(0.15,0.1)),
+              distPointSegment(uv,vec2(0.7,0.15),vec2(0.85,0.1)),
+            );
+            If(distance.lessThanEqual(float(3).div(width)),()=>{
+              cellNext.assign(Cell({
+                // @ts-ignore
+                kind:KIND_WALL,
+                luminance:texture(this.webcamTexture,uvWebcam).r,
+                ttl:float(0),
+              }));
+            });
+          }
+          {
+            const distance=min(
+              distPointSegment(uv,vec2(0.15,0.5),vec2(0,0.5)),
+              distPointSegment(uv,vec2(0.85,0.5),vec2(1,0.5)),
+            );
+            If(distance.lessThanEqual(float(3).div(width)),()=>{
+              cellNext.assign(Cell({
+                // @ts-ignore
+                kind:KIND_SINK,
+                luminance:texture(this.webcamTexture,uvWebcam).r,
+                ttl:float(0),
+              }));
+            });
+          }
+        }).ElseIf(int(this.uFieldIndex).equal(int(1)),()=>{
+          // フィールド1: バケツ
+          {
+            const thickness=float(3).div(width).toVar();
+            const distance=min(
+              // 下辺
+              distPointSegment(uv,vec2(0.1,0.05),vec2(0.9,0.05)),
+              // 左辺
+              distPointSegment(uv,vec2(0.1,0.05),vec2(0.0,0.9)),
+              // 右辺
+              distPointSegment(uv,vec2(0.9,0.05),vec2(1.0,0.9)),
+            );
+            If(distance.lessThanEqual(thickness),()=>{
+              cellNext.assign(Cell({
+                // @ts-ignore
+                kind:KIND_WALL,
+                luminance:texture(this.webcamTexture,uvWebcam).r,
+                ttl:float(0),
+              }));
+            });
+          }
+        }).Else(()=>{
+          // デフォルト: 何もしない
+        });
+      });
+
+      // 砂の追加（キャプチャ時）
       If(bool(this.uIsCapturing),()=>{
-        // 初期化処理
-        // cellNext.assign(Cell({
-        //   kind:KIND_AIR,
-        //   luminance:float(0),
-        // }));
         If(uv.sub(CAPTURE_POINT).length().lessThanEqual(CAPTURE_RADIUS),()=>{
           If(int(coord.x).mod(int(SAND_SPACING)).add(int(coord.y).mod(int(SAND_SPACING))).equal(int(0)),()=>{
             const ttl=mix(float(SAND_TTL_MIN),float(SAND_TTL_MAX),hash(uv.mul(100)));
             cellNext.assign(Cell({
               // @ts-ignore
               kind:KIND_SAND,
-              // luminance:float(sin(uv.mul(360*10).radians()).length()),
-              // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
               luminance:texture(this.webcamTexture,uvWebcam).r,
               ttl:ttl,
             }));
           });
         });
-
-        {
-          const distance=min(
-            distPointSegment(uv,vec2(0.3,0.90),vec2(0.5,0.95)),
-            distPointSegment(uv,vec2(0.7,0.90),vec2(0.5,0.95)),
-            distPointSegment(uv,vec2(0.3,0.15),vec2(0.45,0.1)),
-            distPointSegment(uv,vec2(0.7,0.15),vec2(0.55,0.1)),
-            distPointSegment(uv,vec2(0.3,0.15),vec2(0.15,0.1)),
-            distPointSegment(uv,vec2(0.7,0.15),vec2(0.85,0.1)),
-          );
-
-          If(distance.lessThanEqual(float(3).div(width)),()=>{
-            cellNext.assign(Cell({
-              // @ts-ignore
-              kind:KIND_WALL,
-              // luminance:float(sin(uv.mul(360*10).radians()).length()),
-              // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
-            // luminance:float(1.0),
-            luminance:texture(this.webcamTexture,uvWebcam).r,
-              ttl:float(0),
-            }));
-          });
-
-        }
-        {
-          const distance=min(
-            distPointSegment(uv,vec2(0.15,0.5),vec2(0,0.5)),
-            distPointSegment(uv,vec2(0.85,0.5),vec2(1,0.5)),
-          );
-
-          If(distance.lessThanEqual(float(3).div(width)),()=>{
-            cellNext.assign(Cell({
-              // @ts-ignore
-              kind:KIND_SINK,
-              // luminance:float(sin(uv.mul(360*10).radians()).length()),
-              // luminance:toLuminance(texture(this.webcamTexture,uvWebcam)),
-            // luminance:float(1.0),
-            luminance:texture(this.webcamTexture,uvWebcam).r,
-              ttl:float(0),
-            }));
-          });
-          
-        }
-
       });
       // @ts-ignore
       If(cellNext.get("kind").equal(KIND_SAND),()=>{
@@ -340,12 +357,14 @@ export class SandSimulator{
     }
   }
 
-  async updateFrameAsync(renderer:THREE.WebGPURenderer,isCapturing:boolean) {  
+  async updateFrameAsync(renderer:THREE.WebGPURenderer,isCapturing:boolean,isClearing:boolean,fieldIndex:number) {  
     this.toggleTexture();
 
 
     // コンピュートシェーダーを実行  
     this.uIsCapturing.value=isCapturing?1:0;
+    this.uIsClearing.value=isClearing?1:0;
+    this.uFieldIndex.value=fieldIndex|0;
 
     let computeNode;
     if(this.isPing){

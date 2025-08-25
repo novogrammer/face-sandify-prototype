@@ -1,5 +1,5 @@
 import Stats from "stats-gl";
-import { ENABLE_FORCE_WEBGL, SAND_SIMULATOR_WIDTH, SAND_SIMULATOR_HEIGHT, ITERATION_PER_SEC, ITERATION_PER_STEP_MAX, CAPTURE_CYCLE_DURATION } from './constants';
+import { ENABLE_FORCE_WEBGL, SAND_SIMULATOR_WIDTH, SAND_SIMULATOR_HEIGHT, ITERATION_PER_SEC, ITERATION_PER_STEP_MAX, CAPTURE_CYCLE_DURATION, CLEAR_CYCLE_DURATION, FIELD_COUNT, ALTERNATE_FIELD_ON_CLEAR } from './constants';
 import { getElementSize } from './dom_utils';
 import { SandSimulator } from './SandSimulator';
 import './style.scss'
@@ -128,6 +128,7 @@ async function mainAsync(){
 
   let isComputing=false;
   let previousTime=-0.001;
+  let currentFieldIndex=0;
 
   renderer.setAnimationLoop( animate );
   async function animate(){
@@ -142,6 +143,11 @@ async function mainAsync(){
 
     const duration=CAPTURE_CYCLE_DURATION;
     const isCapturing = Math.floor(previousTime/duration) < Math.floor(time/duration);
+    const clearDuration=CLEAR_CYCLE_DURATION;
+    const isClearing = Math.floor(previousTime/clearDuration) < Math.floor(time/clearDuration);
+    if(isClearing && ALTERNATE_FIELD_ON_CLEAR){
+      currentFieldIndex=(currentFieldIndex+1)%FIELD_COUNT;
+    }
     if(isCapturing){
       if(ctx){
         ctx.save();
@@ -165,10 +171,10 @@ async function mainAsync(){
     for(let i=0;i<iterationPerFrame;i++){
       if(i==0){
         sandSimulator.uDeltaTime.value=deltaTime;
-        await sandSimulator.updateFrameAsync(renderer,isCapturing);
+        await sandSimulator.updateFrameAsync(renderer,isCapturing,isClearing,currentFieldIndex);
       }else{
         sandSimulator.uDeltaTime.value=0;
-        await sandSimulator.updateFrameAsync(renderer,false);
+        await sandSimulator.updateFrameAsync(renderer,false,false,currentFieldIndex);
       }
     }
     renderer.resolveTimestampsAsync( THREE.TimestampQuery.COMPUTE );
@@ -194,7 +200,6 @@ async function mainAsync(){
 mainAsync().catch((error)=>{
   console.error(error);
 });
-
 
 
 
