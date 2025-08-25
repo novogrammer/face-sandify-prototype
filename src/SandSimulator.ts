@@ -1,4 +1,4 @@
-import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length, min, hash, not } from 'three/tsl';
+import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length, min, hash, not, fract } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 import { IGNORE_SAND_TTL, SAND_SPACING, SAND_TTL_MAX, SAND_TTL_MIN, SHOW_WGSL_CODE } from './constants';
 // 
@@ -11,6 +11,7 @@ const KIND_SINK=int(3);
 
 const CAPTURE_POINT=vec2(0.5,0.65);
 const CAPTURE_RADIUS=float(0.25);
+const CAPTURE_UV_SCALE=float(2.0);
 
 // Cell構造体の定義
 const Cell = struct({
@@ -126,6 +127,8 @@ export class SandSimulator{
       // UV座標を手動で計算
       const uv = vec2(coord).div(vec2(width, height)).toVar("uv");
       const uvWebcam=uv.sub(0.5).mul(this.uWebcamTextureSize.yy).div(this.uWebcamTextureSize.xy).add(0.5).toVar("uvWebcam");
+
+      uvWebcam.assign(fract(uvWebcam.sub(CAPTURE_POINT).mul(CAPTURE_UV_SCALE).add(CAPTURE_POINT)));
 
       const useLeftPriority = frameId.mod(2).equal(int(0)).toVar("useLeftPriority");
       const useLeftFactor = vec2(select(useLeftPriority , 1.0 , -1.0), 1.0).toVar("useLeftFactor");
