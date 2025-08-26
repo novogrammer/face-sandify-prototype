@@ -96,6 +96,7 @@ const makeNewField=Fn(([uv,width,fieldIndex]:[ReturnType<typeof vec2>,ReturnType
   If(fieldIndex.equal(int(0)),()=>{
     // フィールド0: 既存の斜めライン + 左右のシンク
     {
+      const thickness=float(3).div(width).toVar();
       const distance=min(
         distPointSegment(uv,vec2(0.3,0.90),vec2(0.5,0.95)),
         distPointSegment(uv,vec2(0.7,0.90),vec2(0.5,0.95)),
@@ -104,16 +105,17 @@ const makeNewField=Fn(([uv,width,fieldIndex]:[ReturnType<typeof vec2>,ReturnType
         distPointSegment(uv,vec2(0.3,0.15),vec2(0.15,0.1)),
         distPointSegment(uv,vec2(0.7,0.15),vec2(0.85,0.1)),
       );
-      If(distance.lessThanEqual(float(3).div(width)),()=>{
+      If(distance.lessThanEqual(thickness),()=>{
         kindNew.assign(KIND_WALL);
       });
     }
     {
+      const thickness=float(3).div(width).toVar();
       const distance=min(
         distPointSegment(uv,vec2(0.15,0.5),vec2(0,0.5)),
         distPointSegment(uv,vec2(0.85,0.5),vec2(1,0.5)),
       );
-      If(distance.lessThanEqual(float(3).div(width)),()=>{
+      If(distance.lessThanEqual(thickness),()=>{
         kindNew.assign(KIND_SINK);
       });
     }
