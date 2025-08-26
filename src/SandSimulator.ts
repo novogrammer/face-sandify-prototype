@@ -74,6 +74,91 @@ const distPointSegment=Fn(([p,a,b]:[ReturnType<typeof vec2>,ReturnType<typeof ve
   return length(p.sub(proj));
 });
 
+const isAirLikeCell=Fn(([cell]:[ReturnType<typeof Cell>])=>{
+  // @ts-ignore
+  const isAir=bool(cell.get("kind").equal(KIND_AIR)).toVar("isAir");
+  // @ts-ignore
+  const isSink=bool(cell.get("kind").equal(KIND_SINK)).toVar("isSink");
+  return isAir.or(isSink);
+}).setLayout({
+  name:"isAirLikeCell",
+  type:"bool",
+  inputs:[
+    {
+      name:"cell",
+      type:"Cell",
+    },
+  ],
+});
+
+const makeNewField=Fn(([uv,width,fieldIndex]:[ReturnType<typeof vec2>,ReturnType<typeof int>,ReturnType<typeof float>])=>{
+  const kindNew=KIND_AIR.toVar("kindNew");
+  If(fieldIndex.equal(int(0)),()=>{
+    // フィールド0: 既存の斜めライン + 左右のシンク
+    {
+      const distance=min(
+        distPointSegment(uv,vec2(0.3,0.90),vec2(0.5,0.95)),
+        distPointSegment(uv,vec2(0.7,0.90),vec2(0.5,0.95)),
+        distPointSegment(uv,vec2(0.3,0.15),vec2(0.45,0.1)),
+        distPointSegment(uv,vec2(0.7,0.15),vec2(0.55,0.1)),
+        distPointSegment(uv,vec2(0.3,0.15),vec2(0.15,0.1)),
+        distPointSegment(uv,vec2(0.7,0.15),vec2(0.85,0.1)),
+      );
+      If(distance.lessThanEqual(float(3).div(width)),()=>{
+        kindNew.assign(KIND_WALL);
+      });
+    }
+    {
+      const distance=min(
+        distPointSegment(uv,vec2(0.15,0.5),vec2(0,0.5)),
+        distPointSegment(uv,vec2(0.85,0.5),vec2(1,0.5)),
+      );
+      If(distance.lessThanEqual(float(3).div(width)),()=>{
+        kindNew.assign(KIND_SINK);
+      });
+    }
+  }).ElseIf(fieldIndex.equal(int(1)),()=>{
+    // フィールド1: バケツ
+    {
+      const thickness=float(3).div(width).toVar();
+      const distance=min(
+        // 下辺
+        distPointSegment(uv,vec2(0.1,0.05),vec2(0.9,0.05)),
+        // 左辺
+        distPointSegment(uv,vec2(0.1,0.05),vec2(0.0,0.9)),
+        // 右辺
+        distPointSegment(uv,vec2(0.9,0.05),vec2(1.0,0.9)),
+      );
+      If(distance.lessThanEqual(thickness),()=>{
+        kindNew.assign(KIND_WALL);
+      });
+    }
+  }).Else(()=>{
+    // DO NOTHING
+  });
+  return kindNew;
+
+}).setLayout({
+  name:"makeNewField",
+  type:"int",
+  inputs:[
+    {
+      name:"uv",
+      type:"vec2",
+    },
+    {
+      name:"width",
+      type:"float",
+    },
+    {
+      name:"fieldIndex",
+      type:"int",
+    },
+  ],
+
+});
+
+
 export class SandSimulator{
   width:number;
   height:number;
@@ -179,22 +264,6 @@ export class SandSimulator{
 
       cellNext.assign(cellSelf);
 
-      const isAirLikeCell=Fn(([cell]:[ReturnType<typeof Cell>])=>{
-        // @ts-ignore
-        const isAir=bool(cell.get("kind").equal(KIND_AIR)).toVar("isAir");
-        // @ts-ignore
-        const isSink=bool(cell.get("kind").equal(KIND_SINK)).toVar("isSink");
-        return isAir.or(isSink);
-      }).setLayout({
-        name:"isAirLikeCell",
-        type:"bool",
-        inputs:[
-          {
-            name:"cell",
-            type:"Cell",
-          },
-        ],
-      });
 
       If(isAirLikeCell(cellSelf),()=>{
         // watch up
@@ -228,85 +297,8 @@ export class SandSimulator{
       }).Else(()=>{
         // DO NOTHING
       });
-      
 
-      // クリア処理: 全て空気にしてからフィールドを適用
-      If(bool(this.uIsClearing),()=>{
-        cellNext.assign(cellAir);
-        If(int(this.uFieldIndex).equal(int(0)),()=>{
-          // フィールド0: 既存の斜めライン + 左右のシンク
-          {
-            const distance=min(
-              distPointSegment(uv,vec2(0.3,0.90),vec2(0.5,0.95)),
-              distPointSegment(uv,vec2(0.7,0.90),vec2(0.5,0.95)),
-              distPointSegment(uv,vec2(0.3,0.15),vec2(0.45,0.1)),
-              distPointSegment(uv,vec2(0.7,0.15),vec2(0.55,0.1)),
-              distPointSegment(uv,vec2(0.3,0.15),vec2(0.15,0.1)),
-              distPointSegment(uv,vec2(0.7,0.15),vec2(0.85,0.1)),
-            );
-            If(distance.lessThanEqual(float(3).div(width)),()=>{
-              cellNext.assign(Cell({
-                // @ts-ignore
-                kind:KIND_WALL,
-                luminance:texture(this.webcamTexture,uvWebcam).r,
-                ttl:float(0),
-              }));
-            });
-          }
-          {
-            const distance=min(
-              distPointSegment(uv,vec2(0.15,0.5),vec2(0,0.5)),
-              distPointSegment(uv,vec2(0.85,0.5),vec2(1,0.5)),
-            );
-            If(distance.lessThanEqual(float(3).div(width)),()=>{
-              cellNext.assign(Cell({
-                // @ts-ignore
-                kind:KIND_SINK,
-                luminance:texture(this.webcamTexture,uvWebcam).r,
-                ttl:float(0),
-              }));
-            });
-          }
-        }).ElseIf(int(this.uFieldIndex).equal(int(1)),()=>{
-          // フィールド1: バケツ
-          {
-            const thickness=float(3).div(width).toVar();
-            const distance=min(
-              // 下辺
-              distPointSegment(uv,vec2(0.1,0.05),vec2(0.9,0.05)),
-              // 左辺
-              distPointSegment(uv,vec2(0.1,0.05),vec2(0.0,0.9)),
-              // 右辺
-              distPointSegment(uv,vec2(0.9,0.05),vec2(1.0,0.9)),
-            );
-            If(distance.lessThanEqual(thickness),()=>{
-              cellNext.assign(Cell({
-                // @ts-ignore
-                kind:KIND_WALL,
-                luminance:texture(this.webcamTexture,uvWebcam).r,
-                ttl:float(0),
-              }));
-            });
-          }
-        }).Else(()=>{
-          // デフォルト: 何もしない
-        });
-      });
-
-      // 砂の追加（キャプチャ時）
-      If(bool(this.uIsCapturing),()=>{
-        If(uv.sub(CAPTURE_POINT).length().lessThanEqual(CAPTURE_RADIUS),()=>{
-          If(int(coord.x).mod(int(SAND_SPACING)).add(int(coord.y).mod(int(SAND_SPACING))).equal(int(0)),()=>{
-            const ttl=mix(float(SAND_TTL_MIN),float(SAND_TTL_MAX),hash(uv.mul(100)));
-            cellNext.assign(Cell({
-              // @ts-ignore
-              kind:KIND_SAND,
-              luminance:texture(this.webcamTexture,uvWebcam).r,
-              ttl:ttl,
-            }));
-          });
-        });
-      });
+      // SINKは素通りさせてから消す
       // @ts-ignore
       If(cellNext.get("kind").equal(KIND_SAND),()=>{
         // @ts-ignore
@@ -321,6 +313,44 @@ export class SandSimulator{
             cellNext.get("ttl").assign(ttl);
           }).Else(()=>{
             cellNext.assign(cellAir);
+          });
+        });
+      });
+      
+
+      If(bool(this.uIsClearing),()=>{
+        const kindNew=makeNewField(uv,float(width),int(this.uFieldIndex)).toVar("kindNew");
+        If(kindNew.equal(KIND_WALL),()=>{
+          cellNext.assign(Cell({
+            // @ts-ignore
+            kind:KIND_WALL,
+            luminance:texture(this.webcamTexture,uvWebcam).r,
+            ttl:float(0),
+          }));
+          // @ts-ignore
+        }).ElseIf(kindNew.equal(KIND_SINK),()=>{
+          cellNext.assign(Cell({
+            // @ts-ignore
+            kind:KIND_SINK,
+            luminance:texture(this.webcamTexture,uvWebcam).r,
+            ttl:float(0),
+          }));
+        }).Else(()=>{
+          cellNext.assign(cellAir);
+        });
+
+      });
+
+      If(bool(this.uIsCapturing),()=>{
+        If(uv.sub(CAPTURE_POINT).length().lessThanEqual(CAPTURE_RADIUS),()=>{
+          If(int(coord.x).mod(int(SAND_SPACING)).add(int(coord.y).mod(int(SAND_SPACING))).equal(int(0)),()=>{
+            const ttl=mix(float(SAND_TTL_MIN),float(SAND_TTL_MAX),hash(uv.mul(100)));
+            cellNext.assign(Cell({
+              // @ts-ignore
+              kind:KIND_SAND,
+              luminance:texture(this.webcamTexture,uvWebcam).r,
+              ttl:ttl,
+            }));
           });
         });
       });
