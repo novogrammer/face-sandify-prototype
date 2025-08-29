@@ -15,6 +15,28 @@ function querySelector<Type extends HTMLElement>(query:string):Type{
   return element;
 }
 
+function getErrorMessage(error:unknown){
+  if(error instanceof Error){
+    return error.message;
+  }
+  if(typeof error === "string"){
+    return error;
+  }
+  try{
+    return JSON.stringify(error);
+  }catch{
+    return String(error);
+  }
+}
+
+function showError(message:string){
+  const errorElement=querySelector<HTMLElement>(".p-error");
+  errorElement.classList.remove("p-error--hidden");
+  const errorMessageElement=querySelector<HTMLElement>(".p-error__message");
+  errorMessageElement.textContent=message;
+
+}
+
 
 async function mainAsync(){
   const backgroundElement=querySelector<HTMLElement>(".p-background");
@@ -34,13 +56,25 @@ async function mainAsync(){
   }
 
 
-  const renderer = new THREE.WebGPURenderer({
-    antialias:true,
-    forceWebGL:ENABLE_FORCE_WEBGL,
-  });
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize( width, height );
-  await renderer.init();
+  let renderer:THREE.WebGPURenderer;
+  try{
+    renderer = new THREE.WebGPURenderer({
+      antialias:true,
+      forceWebGL:ENABLE_FORCE_WEBGL,
+    });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize( width, height );
+    await renderer.init();
+    const isWebGPUBackend = !!((renderer.backend as any)?.isWebGPUBackend);
+    if(!isWebGPUBackend){
+      throw new Error("isWebGPUBackend is false");
+    }
+  }catch(error){
+    const message=`WebGPUの初期化に失敗しました。\n${getErrorMessage(error)}`;
+    showError(message);
+    console.error(error);
+    return;
+  }
   renderer.domElement.classList.add("p-background__canvas");
   backgroundElement.appendChild( renderer.domElement );
   const stats=new Stats({

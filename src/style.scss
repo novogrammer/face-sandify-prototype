@@ -36,6 +36,22 @@ body {
   }
 }
 
+.p-error{
+  background:#fff;
+  border:#000 solid 1px;
+  border-radius: 2vw;
+  padding:2vw;
+  &--hidden{
+    display:none;
+  }
+  &__message{
+    color:#f00;
+    font-weight: bold;
+    text-align: center;
+    white-space: pre-wrap;
+  }
+}
+
 .p-webcam-video{
   display:none;
 }
