@@ -7,13 +7,17 @@ import './style.scss'
 import * as THREE from 'three/webgpu';
 // import { testStructAsync } from './test_struct';
 
+function querySelector<Type extends HTMLElement>(query:string):Type{
+  const element = document.querySelector<Type>(query);
+  if(!element){
+    throw new Error(`element is null : ${query}`);
+  }
+  return element;
+}
+
 
 async function mainAsync(){
-  const backgroundElement=document.querySelector<HTMLHtmlElement>(".p-background");
-
-  if(!backgroundElement){
-    throw new Error("backgroundElement is null");
-  }
+  const backgroundElement=querySelector<HTMLElement>(".p-background");
 
   const {width,height}=getElementSize(backgroundElement);
   const scene = new THREE.Scene();
@@ -55,10 +59,7 @@ async function mainAsync(){
   const geometry = new THREE.BoxGeometry( 1, 1, 1 );
   const material = new THREE.MeshStandardNodeMaterial();
 
-  const webcamVideoElement = document.querySelector<HTMLVideoElement>(".p-webcam-video");
-  if(!webcamVideoElement){
-    throw new Error("webcamVideoElement is null");
-  }
+  const webcamVideoElement = querySelector<HTMLVideoElement>(".p-webcam-video");
   let webcamCanvasTexture:THREE.CanvasTexture;
   if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
     const constraints={
