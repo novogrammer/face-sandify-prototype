@@ -1,4 +1,4 @@
-import { array, bool, float, Fn, frameId, If, instanceIndex, int, Loop, round, select, dot, struct, texture, textureLoad, textureStore, uniform, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length, min, hash, not, fract } from 'three/tsl';
+import { bool, float, Fn, frameId, If, instanceIndex, int, round, select, dot, struct, texture, textureLoad, textureStore, uniform, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length, min, hash, not, fract } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 import { IGNORE_SAND_TTL, SAND_SPACING, SAND_TTL_MAX, SAND_TTL_MIN, SHOW_WGSL_CODE } from './constants';
 // 
@@ -241,37 +241,46 @@ export class SandSimulator{
       const useLeftPriority = frameId.mod(2).equal(int(0)).toVar("useLeftPriority");
       const useLeftFactor = vec2(select(useLeftPriority , 1.0 , -1.0), 1.0).toVar("useLeftFactor");
 
-      const offsets = array([
-        vec2(-1, -1), vec2(0, -1), vec2(1, -1),
-        vec2(-1, 0),  vec2(0, 0),  vec2(1, 0),
-        vec2(-1, 1),  vec2(0, 1),  vec2(1, 1),
-      ]).toVar("offsets");
-      const cellNeighborList = array([
-        Cell(), Cell(), Cell(),
-        Cell(), Cell(), Cell(),
-        Cell(), Cell(), Cell(),
-      ]).toVar("cellNeighborList");
-
-      Loop(9, ({ i }: { i: number }) => {
-        const offset = vec2(offsets.element(int(i)).mul(useLeftFactor)).toVar("offset");
+      const pickCell=Fn(([coord,offsetOriginal,useLeftFactor]:[ReturnType<typeof vec2>,ReturnType<typeof vec2>,ReturnType<typeof vec2>])=>{
+        const offset = offsetOriginal.mul(useLeftFactor).toVar("offset");
         const uvNeighbor = coord.add(offset).mod(vec2(width, height)).toVar("uvNeighbor");
         const cell = unpackCell(textureLoad(inputTexture, uvNeighbor)).toVar("cell");
-        cellNeighborList.element(int(i)).assign(cell);
+        return cell;
+
+      }).setLayout({
+        name:"pickCell",
+        type:"Cell",
+        inputs:[
+          {
+            name:"coord",
+            type:"vec2",
+          },
+          {
+            name:"offsetOriginal",
+            type:"vec2",
+          },
+          {
+            name:"useLeftFactor",
+            type:"vec2",
+          },
+        ],
       });
 
-      const cellSelf = cellNeighborList.element(int(1 * 3 + 1)).toVar("cellSelf");
 
-      const cellUp = cellNeighborList.element(int(2 * 3 + 1)).toVar("cellUp");
-      const cellFirstDiagonalUp = cellNeighborList.element(int(2 * 3 + 0)).toVar("cellFirstDiagonalUp");
-      const cellFirstSideUp = cellNeighborList.element(int(1 * 3 + 0)).toVar("cellFirstSideUp");
-      const cellSecondDiagonalUp = cellNeighborList.element(int(2 * 3 + 2)).toVar("cellSecondDiagonalUp");
-      const cellSecondSideUp = cellNeighborList.element(int(1 * 3 + 2)).toVar("cellSecondSideUp");
+      const cellSelf = pickCell(coord,vec2(0, 0),useLeftFactor).toVar("cellSelf");
+      const cellUp = pickCell(coord,vec2(0, 1),useLeftFactor).toVar("cellUp");
+      const cellFirstDiagonalUp = pickCell(coord,vec2(-1, 1),useLeftFactor).toVar("cellFirstDiagonalUp");
+      const cellFirstSideUp = pickCell(coord,vec2(-1, 0),useLeftFactor).toVar("cellFirstSideUp");
+      const cellSecondDiagonalUp = pickCell(coord,vec2(1, 1),useLeftFactor).toVar("cellSecondDiagonalUp");
+      const cellSecondSideUp = pickCell(coord,vec2(1, 0),useLeftFactor).toVar("cellSecondSideUp");
 
-      const cellDown = cellNeighborList.element(int(0 * 3 + 1)).toVar("cellDown");
-      const cellFirstDiagonalDown = cellNeighborList.element(int(0 * 3 + 2)).toVar("cellFirstDiagonalDown");
-      const cellFirstSideDown = cellNeighborList.element(int(1 * 3 + 2)).toVar("cellFirstSideDown");
-      const cellSecondDiagonalDown = cellNeighborList.element(int(0 * 3 + 0)).toVar("cellSecondDiagonalDown");
-      const cellSecondSideDown = cellNeighborList.element(int(1 * 3 + 0)).toVar("cellSecondSideDown");
+      const cellDown = pickCell(coord,vec2(0, -1),useLeftFactor).toVar("cellDown");
+      const cellFirstDiagonalDown = pickCell(coord,vec2(1, -1),useLeftFactor).toVar("cellFirstDiagonalDown");
+      // 同じ値を参照するのでコピーする
+      const cellFirstSideDown = cellSecondSideUp.toVar("cellFirstSideDown");
+      const cellSecondDiagonalDown = pickCell(coord,vec2(-1, -1),useLeftFactor).toVar("cellSecondDiagonalDown");
+      // 同じ値を参照するのでコピーする
+      const cellSecondSideDown = cellFirstSideUp.toVar("cellSecondSideDown");
 
       const cellNext = Cell().toVar("cellNext");
       const cellAir = Cell({
