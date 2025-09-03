@@ -72,6 +72,23 @@ const distPointSegment=Fn(([p,a,b]:[ReturnType<typeof vec2>,ReturnType<typeof ve
   const t = clamp(dot(pa,ba).div(dot(ba,ba)),0.0,1.0).toVar();
   const proj = a.add(ba.mul(t)).toVar();
   return length(p.sub(proj));
+}).setLayout({
+  name:"distPointSegment",
+  type:"float",
+  inputs:[
+    {
+      name:"p",
+      type:"vec2",
+    },
+    {
+      name:"a",
+      type:"vec2",
+    },
+    {
+      name:"b",
+      type:"vec2",
+    },
+  ],
 });
 
 const isAirLikeCell=Fn(([cell]:[ReturnType<typeof Cell>])=>{
