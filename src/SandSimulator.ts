@@ -383,16 +383,13 @@ export class SandSimulator{
     this.computeNodePing=computeShader(this.storageTexturePing,this.storageTexturePong).compute(this.width*this.height);
     this.computeNodePong=computeShader(this.storageTexturePong,this.storageTexturePing).compute(this.width*this.height);
 
-    {
-      const cell = unpackCell(texture(this.storageTexturePong));
-      const color=toColor(cell);
-      this.colorNodePing=color;
-    }
-    {
-      const cell = unpackCell(texture(this.storageTexturePing));
-      const color=toColor(cell);
-      this.colorNodePong=color;
-    }
+    const colorFn = Fn(([storageTexture]:[THREE.StorageTexture])=>{
+      const cell = unpackCell(texture(storageTexture)).toVar("cell");
+      const color=toColor(cell).toVar("color");
+      return color;
+    });
+    this.colorNodePing=colorFn(this.storageTexturePong);
+    this.colorNodePong=colorFn(this.storageTexturePing);
   }
   toggleTexture(){
     this.isPing=!this.isPing;
