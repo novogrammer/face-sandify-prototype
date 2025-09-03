@@ -93,11 +93,11 @@ const distPointSegment=Fn(([p,a,b]:[ReturnType<typeof vec2>,ReturnType<typeof ve
 
 const isAirLikeCell=Fn(([cell]:[ReturnType<typeof Cell>])=>{
   // @ts-ignore
-  const isAir=bool(cell.get("kind").equal(KIND_AIR)).toVar("isAir");
+  const isAir=bool(cell.get("kind").equal(KIND_AIR))/*.toVar("isAir")*/;
   // @ts-ignore
-  const isSink=bool(cell.get("kind").equal(KIND_SINK)).toVar("isSink");
+  const isSink=bool(cell.get("kind").equal(KIND_SINK))/*.toVar("isSink")*/;
   return isAir.or(isSink);
-}).setLayout({
+})/*.setLayout({
   name:"isAirLikeCell",
   type:"bool",
   inputs:[
@@ -106,7 +106,7 @@ const isAirLikeCell=Fn(([cell]:[ReturnType<typeof Cell>])=>{
       type:"Cell",
     },
   ],
-});
+})*/;
 
 const makeNewField=Fn(([uv,width,fieldIndex]:[ReturnType<typeof vec2>,ReturnType<typeof int>,ReturnType<typeof float>])=>{
   const kindNew=KIND_AIR.toVar("kindNew");
