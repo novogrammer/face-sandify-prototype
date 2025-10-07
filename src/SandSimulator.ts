@@ -1,4 +1,4 @@
-import { bool, float, Fn, frameId, If, instanceIndex, int, round, select, dot, struct, texture, textureLoad, textureStore, uniform, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length, min, hash, not, fract } from 'three/tsl';
+import { bool, float, Fn, frameId, If, instanceIndex, int, select, dot, struct, texture, uniform, vec2, vec3, vec4, type ShaderNodeObject, mix, clamp, length, min, hash, not, fract, instancedArray, floor, uv } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 import { IGNORE_SAND_TTL, SAND_SPACING, SAND_TTL_MAX, SAND_TTL_MIN, SHOW_WGSL_CODE } from './constants';
 // 
@@ -20,33 +20,7 @@ const Cell = struct({
     ttl: 'float',
 },"Cell");
 
-// unpackCell関数  
-const unpackCell = Fn(([color]:[ReturnType<typeof vec4>]) => {  
-  const cell = Cell({
-    // @ts-ignore
-    kind:int(round(color.r.mul(255.0))),
-    luminance:color.g,
-    ttl:color.b,
-  });
-  return cell;  
-});  
-
-// packCell関数
-const packCell = Fn(([cell]:[ReturnType<typeof Cell>]) => {
-  const color = vec4(
-    // @ts-ignore
-    float(cell.get('kind')).div(255.0),
-    // @ts-ignore
-    cell.get('luminance'),
-    // @ts-ignore
-    cell.get('ttl'),
-    1.0
-  );
-  return color;
-});
-// const toLuminance = Fn(([rgb]:[ReturnType<typeof vec3>])=>{
-//   return dot(rgb,vec3(0.299, 0.587, 0.114));
-// });
+type FloatStorageNode = ReturnType<typeof instancedArray>;
 
 const toColor = Fn(([cell]:[ReturnType<typeof Cell>])=>{
   const rgb=vec3(1.0).toVar();
@@ -182,10 +156,12 @@ export class SandSimulator{
   width:number;
   height:number;
   webcamTexture:THREE.Texture;
-  
-
-  storageTexturePing:THREE.StorageTexture;
-  storageTexturePong:THREE.StorageTexture;
+  storageKindPing:FloatStorageNode;
+  storageKindPong:FloatStorageNode;
+  storageLuminancePing:FloatStorageNode;
+  storageLuminancePong:FloatStorageNode;
+  storageTtlPing:FloatStorageNode;
+  storageTtlPong:FloatStorageNode;
 
   uIsCapturing:ShaderNodeObject<THREE.UniformNode<number>>;
   uWebcamTextureSize:ShaderNodeObject<THREE.UniformNode<THREE.Vector2>>;
@@ -207,20 +183,14 @@ export class SandSimulator{
     this.height=height;
     this.webcamTexture=webcamTexture;
 
-    const makeTexture=()=>{
-      const texture=new THREE.StorageTexture(width, height);
-      // texture.type=THREE.HalfFloatType;
-      texture.type=THREE.FloatType;
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.RepeatWrapping;
-      texture.minFilter = THREE.NearestFilter;
-      texture.magFilter = THREE.NearestFilter;
-      // texture.minFilter = THREE.LinearFilter;
-      // texture.magFilter = THREE.LinearFilter;
-      return texture;
-    }
-    this.storageTexturePing=makeTexture();
-    this.storageTexturePong=makeTexture();
+    const cellCount=width*height;
+    const createFloatStorage=(label:string)=>instancedArray(new Float32Array(cellCount),"float").label(label) as FloatStorageNode;
+    this.storageKindPing=createFloatStorage("kindPing");
+    this.storageKindPong=createFloatStorage("kindPong");
+    this.storageLuminancePing=createFloatStorage("luminancePing");
+    this.storageLuminancePong=createFloatStorage("luminancePong");
+    this.storageTtlPing=createFloatStorage("ttlPing");
+    this.storageTtlPong=createFloatStorage("ttlPong");
     
 
     this.uIsCapturing=uniform(0);
@@ -230,7 +200,21 @@ export class SandSimulator{
     this.uFieldIndex=uniform(0);
 
     // コンピュートシェーダーの定義
-    const computeShader = Fn(([inputTexture, outputTexture]:[THREE.StorageTexture,THREE.StorageTexture]) => {
+    const computeShader = Fn(([
+      kindInput,
+      luminanceInput,
+      ttlInput,
+      kindOutput,
+      luminanceOutput,
+      ttlOutput,
+    ]:[
+      FloatStorageNode,
+      FloatStorageNode,
+      FloatStorageNode,
+      FloatStorageNode,
+      FloatStorageNode,
+      FloatStorageNode,
+    ]) => {
       const coord = vec2(instanceIndex.mod(width), instanceIndex.div(width)).toVar("coord");
       // UV座標を手動で計算
       const uv = vec2(coord).div(vec2(width, height)).toVar("uv");
@@ -243,8 +227,16 @@ export class SandSimulator{
 
       const pickCell=Fn(([coord,offsetOriginal,useLeftFactor]:[ReturnType<typeof vec2>,ReturnType<typeof vec2>,ReturnType<typeof vec2>])=>{
         const offset = offsetOriginal.mul(useLeftFactor).toVar("offset");
-        const uvNeighbor = coord.add(offset).mod(vec2(width, height)).toVar("uvNeighbor");
-        const cell = unpackCell(textureLoad(inputTexture, uvNeighbor)).toVar("cell");
+        const uvNeighbor = coord.add(offset).add(vec2(width, height)).mod(vec2(width, height)).toVar("uvNeighbor");
+        const neighborIndex=int(uvNeighbor.y.mul(float(width)).add(uvNeighbor.x)).toVar("neighborIndex");
+        const cell = Cell({
+          // @ts-ignore
+          kind:int(kindInput.element(neighborIndex)),
+          // @ts-ignore
+          luminance:luminanceInput.element(neighborIndex),
+          // @ts-ignore
+          ttl:ttlInput.element(neighborIndex),
+        }).toVar("cell");
         return cell;
 
       }).setLayout({
@@ -383,22 +375,73 @@ export class SandSimulator{
         });
       });
 
-      const cellColorNext=packCell(cellNext).toVar("cellColorNext");
-
-      // 結果を書き込み  
-      textureStore(outputTexture, coord, cellColorNext);  
+      const selfIndex=int(coord.y.mul(float(width)).add(coord.x)).toVar("selfIndex");
+      // 結果を書き込み
+      // @ts-ignore
+      kindOutput.element(selfIndex).assign(float(cellNext.get("kind")));
+      // @ts-ignore
+      luminanceOutput.element(selfIndex).assign(cellNext.get("luminance"));
+      // @ts-ignore
+      ttlOutput.element(selfIndex).assign(cellNext.get("ttl"));
     });  
 
-    this.computeNodePing=computeShader(this.storageTexturePing,this.storageTexturePong).compute(this.width*this.height);
-    this.computeNodePong=computeShader(this.storageTexturePong,this.storageTexturePing).compute(this.width*this.height);
+    this.computeNodePing=computeShader(
+      this.storageKindPing,
+      this.storageLuminancePing,
+      this.storageTtlPing,
+      this.storageKindPong,
+      this.storageLuminancePong,
+      this.storageTtlPong,
+    ).compute(this.width*this.height);
+    this.computeNodePong=computeShader(
+      this.storageKindPong,
+      this.storageLuminancePong,
+      this.storageTtlPong,
+      this.storageKindPing,
+      this.storageLuminancePing,
+      this.storageTtlPing,
+    ).compute(this.width*this.height);
 
-    const colorFn = Fn(([storageTexture]:[THREE.StorageTexture])=>{
-      const cell = unpackCell(texture(storageTexture)).toVar("cell");
-      const color=toColor(cell).toVar("color");
-      return color;
+    const sampleCell = Fn(([
+      uvCoord,
+      kindStorage,
+      luminanceStorage,
+      ttlStorage,
+    ]:[
+      ReturnType<typeof vec2>,
+      FloatStorageNode,
+      FloatStorageNode,
+      FloatStorageNode,
+    ]) => {
+      const uvClamped=clamp(uvCoord,vec2(0.0),vec2(0.999999)).toVar("uvClamped");
+      const scaled=floor(uvClamped.mul(vec2(float(width),float(height)))).toVar("scaled");
+      const ix=int(clamp(scaled.x,0.0,float(width-1))).toVar("ix");
+      const iy=int(clamp(scaled.y,0.0,float(height-1))).toVar("iy");
+      const index=iy.mul(int(width)).add(ix).toVar("index");
+      return Cell({
+        // @ts-ignore
+        kind:int(kindStorage.element(index)),
+        // @ts-ignore
+        luminance:luminanceStorage.element(index),
+        // @ts-ignore
+        ttl:ttlStorage.element(index),
+      });
     });
-    this.colorNodePing=colorFn(this.storageTexturePong);
-    this.colorNodePong=colorFn(this.storageTexturePing);
+
+    const colorFn = Fn(([
+      kindStorage,
+      luminanceStorage,
+      ttlStorage,
+    ]:[
+      FloatStorageNode,
+      FloatStorageNode,
+      FloatStorageNode,
+    ])=>{
+      const cell=sampleCell(uv(),kindStorage,luminanceStorage,ttlStorage).toVar("cell");
+      return toColor(cell);
+    });
+    this.colorNodePing=colorFn(this.storageKindPong,this.storageLuminancePong,this.storageTtlPong);
+    this.colorNodePong=colorFn(this.storageKindPing,this.storageLuminancePing,this.storageTtlPing);
   }
   toggleTexture(){
     this.isPing=!this.isPing;
